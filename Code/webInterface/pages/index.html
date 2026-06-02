@@ -1,333 +1,512 @@
 {% extends "../layout.html" %}
 
 {% block header_headline_title %}
-<span data-i18n="title_home">Lay-Z-Spa Module</span>
+<span data-i18n="title_home">Lay-Z-Spa</span>
 {% endblock %}
 
 {% block top_navigation %}
-{% run use_component("topNavigation", "index") %}
+{% run use_component("topNavigation", "control") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "control") %}
 {% endblock %}
 
 {% block content %}
-<!-- ==================== SECTION: Display Panel ==================== -->
-<section id="sectionDisplay">
-  <table>
-    <tr>
-      <td class="center">
-        <div id="display">[DSP]</div>
-      </td>
-    </tr>
-  </table>
+
+<!-- Lucide icon sprite. Inlined so it ships with the page (one fewer
+     fetch on first paint) and uses currentColor so each <use> picks up
+     its parent's text colour. Add new icons here when needed. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="ic-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+    </symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 6 9 17l-5-5"/>
+    </symbol>
+    <symbol id="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </symbol>
+    <symbol id="ic-power" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>
+    </symbol>
+    <symbol id="ic-wifi-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 20h.01"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/><path d="M5 12.86a10 10 0 0 1 5.17-2.69"/><path d="M19 12.86a10 10 0 0 0-2.01-1.52"/><path d="M2 8.82a15 15 0 0 1 4.18-2.64"/><path d="M22 8.82a15 15 0 0 0-11.29-3.76"/><path d="m2 2 20 20"/>
+    </symbol>
+    <symbol id="ic-droplets" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/>
+    </symbol>
+    <symbol id="ic-thermometer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>
+    </symbol>
+    <symbol id="ic-fan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"/><circle cx="12" cy="12" r="2"/>
+    </symbol>
+    <symbol id="ic-waves" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+    </symbol>
+    <symbol id="ic-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12h14"/>
+    </symbol>
+    <symbol id="ic-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12h14"/><path d="M12 5v14"/>
+    </symbol>
+    <symbol id="ic-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- Stub elements for legacy index.js compatibility. The OTHER-message
+     handler in index.js writes mqtt/fw/model/rssi/jetstotals; we kept
+     those values out of the visible UI but the legacy code throws on
+     the first null.innerHTML. Hidden stubs keep it happy. -->
+<div hidden aria-hidden="true">
+  <span id="mqtt"></span>
+  <span id="fw"></span>
+  <span id="model"></span>
+  <span id="rssi"></span>
+  <span id="jetstotals"></span>
+</div>
+
+<!-- ============ Offline banner ============
+     Visible when the WebSocket is down or no STATES message has arrived
+     in the last 10s. The body gets class="offline" too, which fades and
+     disables hero + functions so commands don't queue into the void. -->
+<div class="offline-banner" id="offlineBanner" hidden role="status" aria-live="polite">
+  <svg class="bn-ico" aria-hidden="true"><use href="#ic-wifi-off"/></svg>
+  <span id="offlineMsg">Spa offline — controls disabled</span>
+</div>
+
+<!-- ============ Hero status card ============
+     The "glance" answer to: is the spa on, what temp, where heading.
+     Status pill colours: heating (amber pulse), ready (green), idle, off, offline. -->
+<section id="sectionHero">
+  <div class="card hero-card">
+    <div class="hero-status-row">
+      <span class="status-pill off" id="statusPill">
+        <svg class="sp-ico" aria-hidden="true"><use id="statusIcon" href="#ic-power"/></svg>
+        <span id="statusLabel">—</span>
+      </span>
+    </div>
+
+    <div class="hero-temp">
+      <span class="big" id="heroTemp">—</span>
+      <span class="deg" id="heroUnit">°C</span>
+    </div>
+
+    <p class="hero-sub" id="heroSub">
+      <span data-i18n="hero_target_idle">Target </span>
+      <span class="ttarget" id="heroTarget">—</span>
+      <span class="est" id="heroEst"></span>
+    </p>
+
+    <!-- Target stepper. Big touch targets, hard to mis-tap.
+         Sends setTarget command via existing handler — bound from JS. -->
+    <div class="target-stepper" id="targetStepper">
+      <button type="button" id="targetMinus" aria-label="Decrease target">
+        <svg class="step-ico"><use href="#ic-minus"/></svg>
+      </button>
+      <div class="value">
+        <span class="num" id="targetVal">—</span>
+        <span class="lbl" data-i18n="hero_target_label">Target</span>
+      </div>
+      <button type="button" id="targetPlus" aria-label="Increase target">
+        <svg class="step-ico"><use href="#ic-plus"/></svg>
+      </button>
+    </div>
+  </div>
 </section>
 
-<!-- ==================== SECTION: Temperature ==================== -->
-<section id="sectionTemperature">
-  <div class="visualapproach"></div>
-  <h2 data-i18n="section_temp_title">Temperature</h2>
-  <table class="fixed">
-    <tr>
-      <td>
-        <!-- 1) Un span dédié au texte « Actual: » ou « Réel : » -->
-        <span data-i18n="label_actual">Actual:</span>
-      </td>
-      <td><span id="atlabel">n/a</span></td>
-    </tr>
-    <tr>
-      <td>
-        <!-- 2) Un span dédié au texte « Virtual: » / « Virtuel : » -->
-        <span data-i18n="label_virtual">Virtual:</span>
-
-        <!-- 3) La bulle « ? » en dehors du span de traduction -->
-        <span class="tooltip"
-          data-text="ESP attempts to keep track of water temperature even when pump is stopped and the temperature drops in the pump while the large body of water cools slower. Uses ambient temperature. Must be calibrated before working. See SPA Config page."
-          data-i18n="[data-text]tooltip_virtual">?</span>
-      </td>
-      <td><span id="vtlabel">n/a</span></td>
-    </tr>
-    <tr>
-      <td>
-        <span data-i18n="label_target">Target:</span>
-      </td>
-      <td><span id="ttlabel">n/a</span></td>
-    </tr>
-  </table>
-</section>
-
-<!-- ==================== SECTION: Control ==================== -->
-<section id="sectionControl">
-  <h2 data-i18n="section_control_title">Control</h2>
-
-  <table id="tableSlider">
-    <tr>
-      <td><span data-i18n="control_temp">Temperature</span></td>
-      <td>
-        <input type="range" id="temp" min="20" max="40" step="1" value="20" onmouseup="sendCommand('setTarget')"
-          ontouchend="sendCommand('setTarget')">
-      </td>
-      <td style="width:10%; text-align:right" id="sliderTempVal">n/a</td>
-    </tr>
-    <tr>
-      <td><span data-i18n="control_ambient">Ambient Temperature</span></td>
-      <td>
-        <input type="range" id="amb" min="-40" max="60" step="1" value="20" onmouseup="sendCommand('setAmbient')"
-          ontouchend="sendCommand('setAmbient')">
-      </td>
-      <td style="text-align:right" id="sliderAmbVal">n/a</td>
-    </tr>
-    <tr id="rowBrightness">
-      <td>
-        <!-- 1) Span juste pour « Brightness » / « Luminosité » -->
-        <span data-i18n="control_brightness">Brightness</span>
-
-        <!-- 2) Bulle « ? » placée à part -->
-        <span class="tooltip"
-          data-text="Remember: When set to '0' the display and all buttons on the pump are completely dimmed out (off), but will light up for 5s when pressing a button."
-          data-i18n="[data-text]tooltip_brightness">?</span>
-      </td>
-      <td>
-        <input type="range" id="brt" min="0" max="8" step="1" value="7" onmouseup="sendCommand('setBrightness')"
-          ontouchend="sendCommand('setBrightness')">
-      </td>
-      <td style="text-align:right" id="sliderBrtVal">n/a</td>
-    </tr>
-  </table>
-
-  <table id="tableSelector" class="fixed">
-    <tr>
-      <td class="center"><span data-i18n="control_temp">Temperature</span></td>
-      <td class="center"><span data-i18n="control_ambient">Ambient Temperature</span></td>
-      <td id="brightnessHeader" class="center">
-        <!-- même principe pour la version sélecteur numérique -->
-        <span data-i18n="control_brightness">Brightness</span>
-        <span class="tooltip left"
-          data-text="Remember: When set to '0' the display and all buttons on the pump are completely dimmed out (off), but will light up for 5s when pressing a button."
-          data-i18n="[data-text]tooltip_brightness">?</span>
-      </td>
-    </tr>
-    <tr>
-      <td class="center">
-        <div class="selector">
-          <button onclick="increaseNumber('selectorTemp'); sendCommand('setTargetSelector')"
-            class="selectorbutton selectortop">ᐱ</button>
-          <input style="display:none" type="number" id="selectorTemp" min="20" max="40" step="1" value="20"
-            class="selectorvalue" onchange="sendCommand('setTargetSelector')">
-          <div class="wrapper">
-            <span class="numDisplay"></span>
-          </div>
-          <button onclick="decreaseNumber('selectorTemp'); sendCommand('setTargetSelector')"
-            class="selectorbutton selectorbottom">ᐯ</button>
-        </div>
-      </td>
-      <td class="center">
-        <div class="selector">
-          <button onclick="increaseNumber('selectorAmb'); sendCommand('setAmbientSelector')"
-            class="selectorbutton selectortop">ᐱ</button>
-          <input style="display:none" type="number" id="selectorAmb" min="-40" max="60" step="1" value="20"
-            class="selectorvalue" onchange="sendCommand('setAmbientSelector')">
-          <div class="wrapper">
-            <span class="numDisplay"></span>
-          </div>
-          <button onclick="decreaseNumber('selectorAmb'); sendCommand('setAmbientSelector')"
-            class="selectorbutton selectorbottom">ᐯ</button>
-        </div>
-      </td>
-      <td class="center">
-        <div class="selector" id="divBrightness">
-          <button onclick="increaseNumber('selectorBrt'); sendCommand('setBrightnessSelector')"
-            class="selectorbutton selectortop">ᐱ</button>
-          <input type="number" id="selectorBrt" min="0" max="8" step="1" value="7" class="selectorvalue"
-            onchange="sendCommand('setBrightnessSelector')">
-          <button onclick="decreaseNumber('selectorBrt'); sendCommand('setBrightnessSelector')"
-            class="selectorbutton selectorbottom">ᐯ</button>
-        </div>
-      </td>
-    </tr>
-  </table>
-</section>
-
-<!-- ==================== SECTION: Buttons ==================== -->
-<section id="sectionButtons">
-  <h2 data-i18n="section_buttons_title">Buttons</h2>
-  <table class="fixed">
-    <tr>
-      <td class="right"><span data-i18n="btn_bubbles">Bubbles</span></td>
-      <td>
-        <label class="switch">
+<!-- ============ Functions ============
+     Active spa functions only — pump, heater, bubbles, jets. Unit + Take-control
+     moved into the Display & advanced disclosure below since they're not the
+     "what's the spa doing right now" question. -->
+<section id="sectionFunctions">
+  <div class="card">
+    <h2 data-i18n="section_buttons_title">Functions</h2>
+    <div class="fn-grid">
+      <label class="fn-toggle">
+        <span class="fn-left">
+          <svg class="fn-ico fn-ico-pulse"><use href="#ic-droplets"/></svg>
+          <span class="fn-label" data-i18n="btn_bubbles">Bubbles</span>
+        </span>
+        <span style="display:inline-flex;align-items:center">
           <input type="checkbox" id="AIR" onchange="sendCommand('toggleBubbles')">
-          <span class="slider round"></span>
-        </label>
-      </td>
-      <td class="right"><span data-i18n="btn_heater">Heater</span></td>
-      <td>
-        <label class="switch">
+          <span class="sw"></span>
+        </span>
+      </label>
+      <label class="fn-toggle">
+        <span class="fn-left">
+          <svg class="fn-ico fn-ico-pulse"><use href="#ic-thermometer"/></svg>
+          <span class="fn-label" data-i18n="btn_heater">Heater</span>
+        </span>
+        <span style="display:inline-flex;align-items:center">
           <input type="checkbox" id="HTR" onchange="sendCommand('toggleHeater')">
-          <span id="htrspan" class="slider round"></span>
-        </label>
-      </td>
-    </tr>
-    <tr>
-      <td class="right"><span data-i18n="btn_pump">Pump</span></td>
-      <td>
-        <label class="switch">
+          <span id="htrspan" class="sw"></span>
+        </span>
+      </label>
+      <label class="fn-toggle">
+        <span class="fn-left">
+          <svg class="fn-ico fn-ico-spin"><use href="#ic-fan"/></svg>
+          <span class="fn-label" data-i18n="btn_pump">Pump</span>
+        </span>
+        <span style="display:inline-flex;align-items:center">
           <input type="checkbox" id="FLT" onchange="sendCommand('togglePump')">
-          <span class="slider round"></span>
-        </label>
-      </td>
-      <td class="right"><span data-i18n="btn_unit">Unit (F/C)</span></td>
-      <td>
-        <label class="switch">
-          <input type="checkbox" id="UNT" onchange="sendCommand('toggleUnit')">
-          <span class="slider round"></span>
-        </label>
-      </td>
-    </tr>
-    <tr>
-      <td id="jets" class="right"><span data-i18n="btn_hydrojets">Hydrojets</span></td>
-      <td id="jetsswitch">
-        <label class="switch">
+          <span class="sw"></span>
+        </span>
+      </label>
+      <label class="fn-toggle" id="jetsswitch">
+        <span class="fn-left">
+          <svg class="fn-ico fn-ico-pulse"><use href="#ic-waves"/></svg>
+          <span class="fn-label" id="jets" data-i18n="btn_hydrojets">Hydrojets</span>
+        </span>
+        <span style="display:inline-flex;align-items:center">
           <input type="checkbox" id="HJT" onchange="sendCommand('toggleHydroJets')">
-          <span class="slider round"></span>
-        </label>
-      </td>
-      <td id="god" class="right"><span data-i18n="btn_take_control">Take control</span></td>
-      <td id="godswitch">
-        <label class="switch">
-          <input type="checkbox" id="GOD" onchange="sendCommand('toggleGodmode')">
-          <span class="slider round"></span>
-        </label>
-      </td>
-    </tr>
-  </table>
+          <span class="sw"></span>
+        </span>
+      </label>
+    </div>
+  </div>
 </section>
 
-<!-- ==================== SECTION: Timer ==================== -->
-<section id="sectionTimer">
-  <h2 data-i18n="section_timer_title">Timer</h2>
-  <table>
-    <tr>
-      <td>
-        <span data-i18n="tim_label_chlorine">
-          Last chlorine add was <span id="cltimer">n/a</span> ago.
-        </span>
-      </td>
-      <td>
-        <button id="cltimerbtn" class="button" onclick="buttonConfirm(this); sendCommand('resetTimerChlorine')"
-          data-i18n="btn_reset">reset</button>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <span data-i18n="tim_label_filter_change">
-          Last filter change was <span id="freplacetimer">n/a</span> ago.
-        </span>
-      </td>
-      <td>
-        <button id="freplacetimerbtn" class="button"
-          onclick="buttonConfirm(this); sendCommand('resetTimerReplaceFilter')" data-i18n="btn_reset">reset</button>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <span data-i18n="tim_label_filter_clean">
-          Last filter clean was <span id="fcleantimer">n/a</span> ago.
-        </span>
-      </td>
-      <td>
-        <button id="fcleantimerbtn" class="button" onclick="buttonConfirm(this); sendCommand('resetTimerCleanFilter')"
-          data-i18n="btn_reset">reset</button>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <span data-i18n="tim_label_filter_rinse">
-          Last filter rinse was <span id="frinsetimer">n/a</span> ago.
-        </span>
-      </td>
-      <td>
-        <button id="frinsetimerbtn" class="button" onclick="buttonConfirm(this); sendCommand('resetTimerRinseFilter')"
-          data-i18n="btn_reset">reset</button>
-      </td>
-    </tr>
-  </table>
-</section>
+<!-- ============ Display & advanced ============
+     Collapsed by default. Houses the legacy spa-panel echo, virtual-temp
+     read-out, ambient + brightness sliders, unit toggle, and the "Take
+     control" power-user switch. Keeps the hero focused on the 95 % case
+     without losing access to the 5 % power features. -->
+<details class="disclosure" id="advancedDisclosure">
+  <summary data-i18n="adv_display_more">Display &amp; advanced</summary>
 
-<!-- ==================== SECTION: Totals ==================== -->
-<section id="sectionTotals">
-  <h2 data-i18n="section_totals_title">Totals</h2>
-  <table class="fixed">
-    <tr>
-      <td>
-        <span data-i18n="totals_time_label">
-          Time:
+  <!-- Legacy spa-panel echo. Useful for debugging serial bus comms;
+       cryptic to a casual user, so hidden by default. Kept inside the
+       disclosure with the existing IDs so index.js keeps updating it. -->
+  <section id="sectionDisplay">
+    <div class="card" style="padding:.6rem;margin-top:.4rem">
+      <p class="card-sub" style="margin:0 0 .35rem">
+        <span data-i18n="adv_spa_panel">Spa panel echo — what the physical display shows.</span>
+      </p>
+      <div id="display" class="display">[DSP]</div>
+    </div>
+  </section>
+
+  <!-- Diagnostic temperature readout — virtual + ambient. Kept here
+       because the hero already shows actual + target; this surfaces the
+       calibration/virtual-temp signal that engineers care about. -->
+  <section id="sectionTemperature">
+    <div class="card">
+      <h2 data-i18n="section_temp_title">Temperature detail</h2>
+      <div class="row">
+        <span class="label" data-i18n="label_actual">Actual</span>
+        <span class="value" id="atlabel">n/a</span>
+      </div>
+      <div class="row">
+        <span class="label">
+          <span data-i18n="label_virtual">Virtual</span>
+          <span class="tooltip"
+            data-text="ESP attempts to keep track of water temperature even when the pump stops. Uses ambient temperature; must be calibrated first. See Settings → Calibration."
+            data-i18n="[data-text]tooltip_virtual">?</span>
         </span>
-        <!-- Bul “?” pour “Time” -->
-        <span class="tooltip" data-text="ESP sends UTC. Browser converts to Local."
-          data-i18n="[data-text]tooltip_time">?</span>
-      </td>
-      <td><span id="time">n/a</span></td>
-    </tr>
-    <tr>
-      <td>
-        <span data-i18n="totals_ready_label">
-          Ready in:
-        </span>
-        <!-- Bul “?” pour “Ready in” -->
-        <span class="tooltip"
-          data-text="New way of estimating time to ready. Works best if given actual ambient temperature from for example HA."
-          data-i18n="[data-text]tooltip_ready">?</span>
-      </td>
-      <td><span id="t2r">n/a</span></td>
-    </tr>
-    <tr>
-      <td>
-        <span data-i18n="totals_uptime_label">
-          Uptime:
-        </span>
-        <!-- Bul “?” pour “Uptime” -->
-        <span class="tooltip"
-          data-text="Total running time of ESP since counter was reset. Rebooting will continue counting."
-          data-i18n="[data-text]tooltip_uptime">?</span>
-      </td>
-      <td><span id="uptime">n/a</span></td>
-    </tr>
-    <tr>
-      <td data-i18n="totals_pump_label">Pump:</td>
-      <td><span id="filtertime">n/a</span></td>
-    </tr>
-    <tr>
-      <td data-i18n="totals_heating_label">Heating:</td>
-      <td><span id="heatingtime">n/a</span></td>
-    </tr>
-    <tr>
-      <td data-i18n="totals_air_label">Air:</td>
-      <td><span id="airtime">n/a</span></td>
-    </tr>
-    <tr id="jetstotals">
-      <td data-i18n="totals_hydrojets_label">Hydrojets:</td>
-      <td><span id="jettime">n/a</span></td>
-    </tr>
-    <tr>
-      <td data-i18n="totals_cost_label">Estimated cost:</td>
-      <td><span id="cost">n/a</span></td>
-    </tr>
-    <tr>
-      <td colspan="2" class="center">
-        <button id="reset" class="button" onclick="resetTotals()" data-i18n="btn_reset">reset</button>
-      </td>
-    </tr>
-  </table>
-</section>
+        <span class="value" id="vtlabel">n/a</span>
+      </div>
+      <div class="row">
+        <span class="label" data-i18n="label_target">Target</span>
+        <span class="value" id="ttlabel">n/a</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Brightness + ambient + unit + take-control. Sliders kept for
+       brightness/ambient since they're rarely-touched config; the
+       new hero stepper supersedes the temperature slider. -->
+  <section id="sectionControl">
+    <div class="card">
+      <h2 data-i18n="section_advanced_controls">Advanced controls</h2>
+      <table id="tableSlider" style="width:100%">
+        <!-- The temperature slider stays in the DOM (index.js reads/writes
+             #temp), but its row is hidden — the hero stepper sets target
+             via the same #temp element. -->
+        <tr style="display:none">
+          <td><span data-i18n="control_temp">Temperature</span></td>
+          <td>
+            <input type="range" id="temp" min="20" max="40" step="1" value="20"
+                   onmouseup="sendCommand('setTarget')"
+                   ontouchend="sendCommand('setTarget')">
+          </td>
+          <td style="text-align:right" id="sliderTempVal">n/a</td>
+        </tr>
+        <tr>
+          <td style="width:35%"><span data-i18n="control_ambient">Ambient</span></td>
+          <td>
+            <input type="range" id="amb" min="-40" max="60" step="1" value="20"
+                   onmouseup="sendCommand('setAmbient')"
+                   ontouchend="sendCommand('setAmbient')">
+          </td>
+          <td style="width:3rem;text-align:right;font-weight:500" id="sliderAmbVal">n/a</td>
+        </tr>
+        <tr id="rowBrightness">
+          <td>
+            <span data-i18n="control_brightness">Brightness</span>
+            <span class="tooltip"
+              data-text="When set to '0' the display and all buttons on the pump dim out, lighting up briefly only on button press."
+              data-i18n="[data-text]tooltip_brightness">?</span>
+          </td>
+          <td>
+            <input type="range" id="brt" min="0" max="8" step="1" value="7"
+                   onmouseup="sendCommand('setBrightness')"
+                   ontouchend="sendCommand('setBrightness')">
+          </td>
+          <td style="text-align:right;font-weight:500" id="sliderBrtVal">n/a</td>
+        </tr>
+      </table>
+
+      <!-- Selector variant — index.js can swap this in based on
+           localStorage('useControlSelector'). Hidden by default. -->
+      <table id="tableSelector" class="fixed" style="width:100%;display:none">
+        <tr>
+          <td class="center"><span data-i18n="control_temp">Temperature</span></td>
+          <td class="center"><span data-i18n="control_ambient">Ambient</span></td>
+          <td id="brightnessHeader" class="center">
+            <span data-i18n="control_brightness">Brightness</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="center">
+            <div class="selector">
+              <button onclick="increaseNumber('selectorTemp'); sendCommand('setTargetSelector')"
+                class="selectorbutton selectortop">ᐱ</button>
+              <input style="display:none" type="number" id="selectorTemp" min="20" max="40" step="1" value="20"
+                class="selectorvalue" onchange="sendCommand('setTargetSelector')">
+              <div class="wrapper"><span class="numDisplay"></span></div>
+              <button onclick="decreaseNumber('selectorTemp'); sendCommand('setTargetSelector')"
+                class="selectorbutton selectorbottom">ᐯ</button>
+            </div>
+          </td>
+          <td class="center">
+            <div class="selector">
+              <button onclick="increaseNumber('selectorAmb'); sendCommand('setAmbientSelector')"
+                class="selectorbutton selectortop">ᐱ</button>
+              <input style="display:none" type="number" id="selectorAmb" min="-40" max="60" step="1" value="20"
+                class="selectorvalue" onchange="sendCommand('setAmbientSelector')">
+              <div class="wrapper"><span class="numDisplay"></span></div>
+              <button onclick="decreaseNumber('selectorAmb'); sendCommand('setAmbientSelector')"
+                class="selectorbutton selectorbottom">ᐯ</button>
+            </div>
+          </td>
+          <td class="center">
+            <div class="selector" id="divBrightness">
+              <button onclick="increaseNumber('selectorBrt'); sendCommand('setBrightnessSelector')"
+                class="selectorbutton selectortop">ᐱ</button>
+              <input type="number" id="selectorBrt" min="0" max="8" step="1" value="7" class="selectorvalue"
+                onchange="sendCommand('setBrightnessSelector')">
+              <button onclick="decreaseNumber('selectorBrt'); sendCommand('setBrightnessSelector')"
+                class="selectorbutton selectorbottom">ᐯ</button>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <div class="fn-grid" style="margin-top:.85rem">
+        <label class="fn-toggle">
+          <span class="fn-label" data-i18n="btn_unit">Unit (°F/°C)</span>
+          <span style="display:inline-flex;align-items:center">
+            <input type="checkbox" id="UNT" onchange="sendCommand('toggleUnit')">
+            <span class="sw"></span>
+          </span>
+        </label>
+        <label class="fn-toggle" id="godswitch">
+          <span class="fn-label" id="god" data-i18n="btn_take_control">Take control</span>
+          <span style="display:inline-flex;align-items:center">
+            <input type="checkbox" id="GOD" onchange="if(this.checked && !confirm('Take control bypasses the spa pump’s safety logic. Enable only if you know what you’re doing.')){this.checked=false;return;}sendCommand('toggleGodmode')">
+            <span class="sw"></span>
+          </span>
+        </label>
+      </div>
+    </div>
+  </section>
+</details>
+
 {% endblock %}
 
 {% block footer %}
-<p class="center">
-  <span id="mqtt" data-i18n="footer_mqtt_loading">MQTT: loading status...</span><br>
-  <span id="fw" data-i18n="footer_fw_loading">Firmware: loading status...</span><br>
-  <span id="model" data-i18n="footer_model_loading">Model: loading status...</span><br>
-  <span id="rssi" data-i18n="footer_rssi_loading">RSSI: loading status...</span>
+<p style="margin:0;text-align:center;color:var(--text-3);font-size:.78rem">
+  <span id="lastUpdate">Connecting…</span>
 </p>
 {% endblock %}
 
 {% block embed_scripts %}
 {% run embed_scripts('index') %}
+<script>
+// ============================================================
+// Control page v2 — hero state + offline detection + stepper.
+// Sits on top of index.js (which still drives WS + commands).
+// All new IDs (hero*, target*, offline*, statusPill, statusLabel)
+// are populated alongside the legacy IDs so we don't fork logic.
+// ============================================================
+
+(function() {
+  let lastStatesAtMs = 0;
+  let lastSeenObj = null;
+
+  // Listen for WS messages via addEventListener instead of patching
+  // window.handlemsg — the legacy onmessage handler in index.js captures
+  // its handlemsg reference by closure, so replacing the global doesn't
+  // intercept anything. addEventListener gives us a parallel listener
+  // without disturbing the legacy data flow.
+  function onWsMessage(e) {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch (err) { return; }
+    if (!msg) return;
+    if (msg.CONTENT === 'STATES') {
+      lastStatesAtMs = Date.now();
+      lastSeenObj = msg;
+      updateHero(msg);
+      updateOfflineBanner();
+    } else if (msg.CONTENT === 'OTHER') {
+      // The legacy handler sets jetsswitch/godswitch display to 'table-cell'
+      // which is wrong for our flex-grid labels — re-set after legacy runs.
+      // (legacy is synchronous + already-fired by the time addEventListener
+      // callbacks run, so this happens AFTER.)
+      const j = document.getElementById('jetsswitch');
+      const g = document.getElementById('godswitch');
+      if (j) j.style.display = msg.HASJETS ? 'flex' : 'none';
+      if (g) g.style.display = msg.HASGOD  ? 'flex' : 'none';
+    }
+  }
+
+  // Attach the listener to the current WS, and re-attach on reconnect.
+  // index.js calls connect() initially + on close (5s retry), so we
+  // wrap connect() to add our listener every time a new WebSocket is born.
+  function attachListener() {
+    if (window.connection && typeof window.connection.addEventListener === 'function') {
+      window.connection.addEventListener('message', onWsMessage);
+    }
+  }
+  attachListener();
+  if (typeof window.connect === 'function') {
+    const _origConnect = window.connect;
+    window.connect = function() {
+      _origConnect.apply(this, arguments);
+      attachListener();
+    };
+  }
+
+  function updateHero(s) {
+    const unit = s.UNT ? '°F' : '°C';
+    document.getElementById('heroTemp').textContent = (typeof s.TMP === 'number') ? s.TMP : '—';
+    document.getElementById('heroUnit').textContent = unit;
+    document.getElementById('heroTarget').textContent = (s.TGT > 0) ? (s.TGT + unit) : '—';
+    const tv = document.getElementById('targetVal');
+    if (tv) {
+      tv.textContent = (s.TGT > 0) ? s.TGT : '—';
+      tv.style.opacity = '';  // confirmed by spa; clear any "applying…" fade
+    }
+
+    // Status pill — derived state machine.
+    //   HEATING : heater coil drawing power (RED LED on the spa panel)
+    //   READY   : target set + actual at or above target
+    //   IDLE    : target set, not heating yet
+    //   OFF     : no target set
+    const pill = document.getElementById('statusPill');
+    const lbl  = document.getElementById('statusLabel');
+    const sub  = document.getElementById('heroSub');
+    const ico  = document.getElementById('statusIcon');
+    pill.classList.remove('heating','ready','idle','off','offline');
+    function setIcon(id) {
+      if (ico) ico.setAttribute('href', '#' + id);
+    }
+    if (s.RED) {
+      pill.classList.add('heating');
+      lbl.textContent = 'Heating';
+      setIcon('ic-flame');
+      sub.innerHTML = `Target <span class="ttarget">${s.TGT}${unit}</span> <span class="est">· heater on</span>`;
+    } else if (s.TGT > 0 && s.TMP >= s.TGT) {
+      pill.classList.add('ready');
+      lbl.textContent = 'At target';
+      setIcon('ic-check');
+      sub.innerHTML = `Target <span class="ttarget">${s.TGT}${unit}</span> <span class="est">· holding</span>`;
+    } else if (s.TGT > 0) {
+      pill.classList.add('idle');
+      lbl.textContent = 'Idle';
+      setIcon('ic-moon');
+      sub.innerHTML = `Target <span class="ttarget">${s.TGT}${unit}</span> <span class="est">· not heating</span>`;
+    } else {
+      pill.classList.add('off');
+      lbl.textContent = 'Off';
+      setIcon('ic-power');
+      sub.innerHTML = `<span class="est">No target set</span>`;
+    }
+
+    // Range bounds for stepper depend on unit. 20-40°C / 68-104°F.
+    document.getElementById('targetMinus').disabled = (s.TGT <= (s.UNT ? 68 : 20));
+    document.getElementById('targetPlus').disabled  = (s.TGT >= (s.UNT ? 104 : 40));
+
+    document.getElementById('lastUpdate').textContent = 'Live · updated just now';
+  }
+
+  function updateOfflineBanner() {
+    const wsAlive = (window.connection && window.connection.readyState === 1);
+    const staleness = lastStatesAtMs ? (Date.now() - lastStatesAtMs) : Infinity;
+    const offline = !wsAlive || staleness > 10000;
+    const banner = document.getElementById('offlineBanner');
+    const msg = document.getElementById('offlineMsg');
+    if (offline) {
+      banner.hidden = false;
+      document.body.classList.add('offline');
+      if (!wsAlive) {
+        msg.textContent = 'App can’t reach the controller — check WiFi';
+      } else {
+        const secs = Math.round(staleness / 1000);
+        msg.textContent = `Controller hasn’t reported in ${secs}s — bus may be silent`;
+      }
+      const pill = document.getElementById('statusPill');
+      pill.classList.remove('heating','ready','idle','off');
+      pill.classList.add('offline');
+      document.getElementById('statusLabel').textContent = 'Offline';
+    } else {
+      banner.hidden = true;
+      document.body.classList.remove('offline');
+      // Last-update freshness label
+      const secs = Math.round((Date.now() - lastStatesAtMs) / 1000);
+      document.getElementById('lastUpdate').textContent =
+        secs < 5 ? 'Live · updated just now' : `Live · updated ${secs}s ago`;
+    }
+  }
+
+  // Stepper bindings. We mutate the legacy #temp input + fire the existing
+  // setTarget command so the firmware contract stays unchanged.
+  function stepTarget(delta) {
+    const tempEl = document.getElementById('temp');
+    const cur = parseInt(tempEl.value, 10) || 20;
+    const next = cur + delta;
+    const lo = parseInt(tempEl.min, 10);
+    const hi = parseInt(tempEl.max, 10);
+    if (next < lo || next > hi) return;
+    tempEl.value = next;
+    if (typeof sendCommand === 'function') sendCommand('setTarget');
+    // Don't update targetVal here — let the WS confirm. Otherwise users
+    // see the value flicker back to "—" when the spa is powered off and
+    // never echoes the change. A brief "applying…" tag tells them it
+    // was sent but hasn't been confirmed yet.
+    const valEl = document.getElementById('targetVal');
+    if (valEl) {
+      valEl.textContent = next;
+      valEl.style.opacity = '.55';
+      clearTimeout(stepTarget._fadeTimer);
+      stepTarget._fadeTimer = setTimeout(() => {
+        valEl.style.opacity = '';
+      }, 6000);
+    }
+  }
+  document.getElementById('targetMinus').addEventListener('click', () => stepTarget(-1));
+  document.getElementById('targetPlus').addEventListener('click', () => stepTarget(+1));
+
+  // Periodic offline check — fires every 2s regardless of WS messages so
+  // a silent bus still flips the banner. Also refreshes the "updated Ns ago"
+  // freshness label.
+  setInterval(updateOfflineBanner, 2000);
+
+})();
+</script>
 {% endblock %}
