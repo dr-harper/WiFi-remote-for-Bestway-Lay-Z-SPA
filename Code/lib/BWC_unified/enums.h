@@ -249,6 +249,14 @@ struct sWifi_info
 {
     String apSsid;
     String apPwd;
+    // Optional BSSID pin — when set (format "AA:BB:CC:DD:EE:FF"), the
+    // firmware locks the STA connection to this exact AP MAC instead of
+    // letting the driver auto-pick any AP advertising apSsid. Solves the
+    // "mesh latched onto the far pod" symptom on home WiFi systems with
+    // multiple APs sharing one SSID — the WiFi-scan UI lists every BSSID
+    // + RSSI so the user can pick the closest one. Empty = auto-pick
+    // (default behaviour, matches the historical firmware).
+    String apBssid;
     String ip4Address_str;
     String ip4Gateway_str;
     String ip4Subnet_str;
