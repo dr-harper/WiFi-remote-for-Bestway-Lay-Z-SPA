@@ -1,3 +1,4 @@
+#This file will never be loaded. It's here as reference (I think)
 title_dashboard=Web Config
 header_title=Web Config
 header_subtitle=Lay-Z-Spa Module
@@ -261,3 +262,15 @@ label_ntp_address=Domain name or IP address:
 section_reset_wifi=Reset WiFi Config:
 reset_wifi_note=This button deletes the WiFi credentials.<br />The ESP will restart and enable its own AP (if you have it checked above).<br />Connect to WiFi AP with SSID "layzspa_module######" and go to address http://192.168.4.2/wifi.html
 btn_reset_wifi=reset WiFi
+
+# Key for the menu (shown in the burger menu)
+menu_networkconfig=Network Configuration
+
+tooltip_pcb_v2b_info=Same as PCB V2, but with wires moved to other pins for better compatibility with certain pumps
+tooltip_pcb_custom_info=If you're using your own board, fill out the pinout below! Leave fields blank if not used.
+tooltip_pinout_info=D0–D8 as labeled on the ESP, but without the 'D'. The ESP converts to GPIO numbers.
+tooltip_ambient_sensor_info=Requires a DS18B20 sensor connected to the specified "Sensor Pin." The sensor periodically updates the "Ambient Temperature."
+tooltip_power_levels_info=Adjusts the power levels for different operating modes.
+
+tooltip_calibrated_info=If checked, the virtual temperature is calibrated. Recalibrate by deselecting and pressing the SAVE button.
+tooltip_calibrate_instr=Calibrate by keeping the heater OFF and the pump ON until the temperature drops a few degrees. Avoid switching any jets, bubbles, etc. The water temperature should initially be several degrees different from the ambient temperature.

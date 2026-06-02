@@ -30,15 +30,14 @@
 #include "util.h"
 #include "bwc_debug.h"
 
-
 BWC *bwc = nullptr;
 
 /**  Tickers cb function runs in interrupt context and cannot be long... */
-Ticker* periodicTimer;
-Ticker* startComplete_ticker;
-Ticker* ntpCheck_ticker;
-Ticker* updateWSTimer;
-Ticker* updateMqttTimer;
+Ticker *periodicTimer;
+Ticker *startComplete_ticker;
+Ticker *ntpCheck_ticker;
+Ticker *updateWSTimer;
+Ticker *updateMqttTimer;
 
 /**  ...Hence these flags to do the work in normal context*/
 bool periodicTimerFlag = false;
@@ -60,7 +59,7 @@ volatile bool bootGuardFiredFlag = false;
 constexpr float BOOT_GUARD_SECONDS = 60.0f;
 
 int periodicTimerInterval = 60;
-sWifi_info* wifi_info;
+sWifi_info *wifi_info;
 
 /** A file to store the uploads */
 File fsUploadFile;
@@ -72,7 +71,7 @@ ESP8266WebServer *server = nullptr;
 WebServer server(80);
 #endif
 
-/** a websocket object that listens on port 81 */
+/** a websocket object that listens on port 8080 */
 WebSocketsServer *webSocket = nullptr;
 
 /** a WiFi client beeing used by the MQTT client */
@@ -109,13 +108,13 @@ void startOTA();
 void stopall();
 void pause_all(bool action);
 void startWebSocket();
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t len);
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t len);
 void startHttpServer();
 void handleGetHardware();
 void handleSetHardware();
 void handleHWtest();
 void handleNotFound();
-String getContentType(const String& filename);
+String getContentType(const String &filename);
 bool handleFileRead(String path);
 bool checkHttpPost(HTTPMethod method);
 void handleGetConfig();
@@ -151,7 +150,7 @@ void updateEnd();
 void udpateProgress(int cur, int total);
 void updateError(int err);
 void startMqtt();
-void mqttCallback(char* topic, byte* payload, unsigned int length);
+void mqttCallback(char *topic, byte *payload, unsigned int length);
 void mqttConnect();
 time_t getBootTime();
 void handleESPInfo();

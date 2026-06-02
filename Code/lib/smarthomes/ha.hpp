@@ -344,7 +344,7 @@ void setupHA()
     doc[(_name)] = F("Reboot time");
     doc[(_uniq_id)] = unique_id;
     doc[(_stat_t)] = mqtt_info->mqttBaseTopic+F("/reboot_time");
-    doc[(_val_tpl)] = F("{{as_timestamp(as_datetime(value).isoformat()) | timestamp_custom('%F %T')}}");
+    doc[(_val_tpl)] = F("{% if value is not none %}{{as_timestamp(as_datetime(value).isoformat()) | timestamp_custom('%F %T') }}{% else %}1970-01-01 01:00:00{% endif %}");
     doc[(_avty_t)] = mqtt_info->mqttBaseTopic+F("/Status");
     doc[(_pl_avail)] = _alive;
     doc[(_pl_not_avail)] = _dead;
@@ -1753,11 +1753,14 @@ void setupHA()
     doc[_min_temp] = mintemp;
     doc[_precision] = 1.0;
     doc[_temp_unit] = haUseCelsius ? "C" : "F";
-    doc[_modes].add(serialized("\"fan_only\", \"off\", \"heat\""));
+    /*A list of supported modes. Needs to be a subset of the default values.
+    Default: [“auto”, “off”, “cool”, “heat”, “dry”, “fan_only”]*/
+    doc[_modes].add(serialized("\"fan_only\", \"off\", \"heat\", \"cool\""));
     doc[_mode_cmd_t] = mqtt_info->mqttBaseTopic+F("/command_batch");
     doc[_mode_cmd_tpl] = F("[{CMD:3,VALUE:{%if value == \"heat\" %}1{% else %}0{% endif %},XTIME:0,INTERVAL:0},{CMD:4,VALUE:{%if value == \"fan_only\" %}1{% elif value == \"heat\" %}1{% else %}0{% endif %},XTIME:0,INTERVAL:0}]");
     doc[_mode_stat_t] = mqtt_info->mqttBaseTopic+F("/message");
-    doc[_mode_stat_tpl] = F("{% if value_json.RED == 1 %}heat{% elif value_json.GRN == 1 %}idle{% elif value_json.FLT == 1 %}fan_only{% else %}off{% endif %}");
+    doc[_mode_stat_tpl] = F("{% if value_json.RED == 1 %}heat{% elif value_json.GRN == 1 %}cool{% elif value_json.FLT == 1 %}fan_only{% else %}off{% endif %}");
+    /*Valid action values: off, heating, cooling, drying, idle, fan.*/
     doc[_act_t] = mqtt_info->mqttBaseTopic+F("/message");
     doc[_act_tpl] = F("{% if value_json.RED == 1 %}heating{% elif value_json.GRN == 1 %}idle{% elif value_json.FLT == 1 %}fan{% else %}off{% endif %}");
     doc[_temp_stat_t] = mqtt_info->mqttBaseTopic+F("/message");

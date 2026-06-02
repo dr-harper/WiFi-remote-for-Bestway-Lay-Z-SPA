@@ -10,13 +10,13 @@ uint32_t heap_water_mark;
 
 // Setup a oneWire instance to communicate with any OneWire devices
 // Setting arbitrarily to 231 since this isn't an actual pin
-// Later during "setup" the correct pin will be set, if enabled 
+// Later during "setup" the correct pin will be set, if enabled
 OneWire *oneWire;
-// Pass our oneWire reference to Dallas Temperature sensor 
+// Pass our oneWire reference to Dallas Temperature sensor
 DallasTemperature *tempSensors;
 
 WiFiEventHandler gotIpEventHandler, disconnectedEventHandler;
-void cb_gotIP(const WiFiEventStationModeGotIP& event)
+void cb_gotIP(const WiFiEventStationModeGotIP &event)
 {
     gotIP_flag = true;
     logbuf::writef("WiFi > GOT IP %s  gw=%s  rssi=%d  ssid='%s'  bssid=%s  ch=%d",
@@ -40,7 +40,8 @@ void gotIP()
     startNTP();
     BWC_LOG_P(PSTR("end of gotip millis = %d\n"), millis());
     bwc->print(WiFi.localIP().toString());
-    if(mqtt_info->useMqtt) mqttConnect();
+    if (mqtt_info->useMqtt)
+        mqttConnect();
     BWC_YIELD;
 }
 
@@ -67,7 +68,7 @@ static const char *disconnectReasonStr(uint8_t r) {
     }
 }
 
-void cb_disconnected(const WiFiEventStationModeDisconnected& event)
+void cb_disconnected(const WiFiEventStationModeDisconnected &event)
 {
     disconnected_flag = true;
     logbuf::writef("WiFi > DISCONNECTED  ssid='%s'  reason=%u (%s)",
@@ -79,13 +80,13 @@ void cb_disconnected(const WiFiEventStationModeDisconnected& event)
 
 void setup()
 {
-    
+
     // init record of stack
     char stack;
     stack_start = &stack;
 
     Serial.begin(76800);
-    BWC_LOG_P(PSTR("\nSetup > Start @ millis: %d\n"),millis());
+    BWC_LOG_P(PSTR("\nSetup > Start @ millis: %d\n"), millis());
     /*register wifi events */
     gotIpEventHandler = WiFi.onStationModeGotIP(cb_gotIP);
     disconnectedEventHandler = WiFi.onStationModeDisconnected(cb_disconnected);
@@ -127,25 +128,29 @@ void setup()
     }
     bwc->setup();
     bwc->loop();
-    periodicTimer->attach(periodicTimerInterval, []{ periodicTimerFlag = true; });
+    periodicTimer->attach(periodicTimerInterval, []
+                          { periodicTimerFlag = true; });
     // delayed mqtt start
-    startComplete_ticker->attach(30, []{ bwc->restoreStates(); startComplete_ticker->detach(); delete startComplete_ticker; }); //can it destroy itself?
+    startComplete_ticker->attach(30, []
+                                 { bwc->restoreStates(); startComplete_ticker->detach(); delete startComplete_ticker; }); // can it destroy itself?
     // update webpage every WS_PERIOD seconds. (will also be updated on state changes)
-    updateWSTimer->attach(WS_PERIOD, []{ sendWSFlag = true; });
+    updateWSTimer->attach(WS_PERIOD, []
+                          { sendWSFlag = true; });
     loadWebConfig();
     startWiFi();
-    if(wifi_info->enableWmApFallback) startSoftAp(); // not blocking anymore so no use case should exist for this to be turned off.
+    if (wifi_info->enableWmApFallback)
+        startSoftAp(); // not blocking anymore so no use case should exist for this to be turned off.
     startHttpServer();
     startWebSocket();
     startOTA();
     startMqtt();
-    if(bwc->hasTempSensor)
-    { 
+    if (bwc->hasTempSensor)
+    {
         HeapSelectIram ephemeral;
         oneWire->begin(bwc->tempSensorPin);
         tempSensors->begin();
     }
-    bwc->print("---");  //No overloaded function exists for the F() macro
+    bwc->print("---"); // No overloaded function exists for the F() macro
     bwc->print(FW_VERSION);
     BWC_LOG_P(PSTR("End of setup() @ Millis: %d @ line: %d. Heap: %d\n"), millis(), __LINE__, ESP.getFreeHeap());
     heap_water_mark = ESP.getFreeHeap();
@@ -186,7 +191,8 @@ static uint32_t      wdLastArmedMaxBlock = 0;// snapshot at most recent arm
 void loop()
 {
     uint32_t freeheap = ESP.getFreeHeap();
-    if(freeheap < heap_water_mark) heap_water_mark = freeheap;
+    if (freeheap < heap_water_mark)
+        heap_water_mark = freeheap;
 
     // Soft watchdog tick. Cheap: two ESP-API reads + small constant logic.
     // Logs WARN on first arm, INFO on disarm, ERROR + restart on fire.
@@ -227,8 +233,10 @@ void loop()
     }
 
 
-    if(gotIP_flag) gotIP();
-    if(disconnected_flag) startSoftAp();
+    if (gotIP_flag)
+        gotIP();
+    if (disconnected_flag)
+        startSoftAp();
 
     // Boot watchdog disabled while debugging setup-time hang.
     // We need this self-destructing info several times, so save it on the stack
@@ -237,7 +245,8 @@ void loop()
     bwc->loop();
 
     // listen for webserver events
-    if(server){
+    if (server)
+    {
         server->handleClient();
         // Serial.print(".");
     }
@@ -271,14 +280,14 @@ void loop()
                 sendMQTT();
                 sendMQTTFlag = false;
             }
-            if(send_mqtt_cfg_needed)
+            if (send_mqtt_cfg_needed)
             {
                 send_mqtt_cfg_needed = false;
                 sendMQTTConfig();
             }
         }
 
-        if(checkNTP_flag)
+        if (checkNTP_flag)
         {
             checkNTP_flag = false;
             checkNTP();
@@ -289,22 +298,22 @@ void loop()
     if (periodicTimerFlag)
     {
         periodicTimerFlag = false;
-        if(WiFi.getMode() == WIFI_AP_STA)
+        if (WiFi.getMode() == WIFI_AP_STA)
         {
             wifi_manual_reconnect();
         }
         if (mqtt_info->useMqtt && !mqttClient->loop() && (WiFi.status() == WL_CONNECTED))
         {
-            BWC_LOG_P(PSTR("MQTT > Not connected\n"),0);
+            BWC_LOG_P(PSTR("MQTT > Not connected\n"), 0);
             mqttConnect();
         }
         // Leverage the pre-existing periodicTimerFlag to also set temperature, if enabled
         setTemperatureFromSensor();
     }
 
-    //Only do this if locked out! (by pressing POWER - LOCK - TIMER - POWER)
-    if(bwc->getBtnSeqMatch())
-    {   
+    // Only do this if locked out! (by pressing POWER - LOCK - TIMER - POWER)
+    if (bwc->getBtnSeqMatch())
+    {
         resetWiFi();
         delay(3000);
         ESP.reset();
@@ -312,14 +321,15 @@ void loop()
     }
 }
 
-
 /**
  * Send status data to web client in JSON format (because it is easy to decode on the other side)
  */
 void sendWS()
 {
-    if(!webSocket) return;
-    if(webSocket->connectedClients() == 0) return;
+    if (!webSocket)
+        return;
+    if (webSocket->connectedClients() == 0)
+        return;
     HeapSelectIram ephemeral;
     // Serial.printf("IRamheap %d\n", ESP.getFreeHeap());
     // send states
@@ -392,11 +402,11 @@ void sendMQTT()
     bwc->getJSONStates(json);
     if (mqttClient->publish((String(mqtt_info->mqttBaseTopic) + F("/message")).c_str(), String(json).c_str(), true))
     {
-        BWC_LOG_P(PSTR("MQTT > message published\n"),0);
+        BWC_LOG_P(PSTR("MQTT > message published\n"), 0);
     }
     else
     {
-        BWC_LOG_P(PSTR("MQTT > message not published\n"),0);
+        BWC_LOG_P(PSTR("MQTT > message not published\n"), 0);
     }
 
     // send times
@@ -404,30 +414,30 @@ void sendMQTT()
     bwc->getJSONTimes(json);
     if (mqttClient->publish((String(mqtt_info->mqttBaseTopic) + F("/times")).c_str(), String(json).c_str(), true))
     {
-        BWC_LOG_P(PSTR("MQTT > times published\n"),0);
+        BWC_LOG_P(PSTR("MQTT > times published\n"), 0);
     }
     else
     {
-        BWC_LOG_P(PSTR("MQTT > times not published\n"),0);
+        BWC_LOG_P(PSTR("MQTT > times not published\n"), 0);
     }
 
-    //send other info
+    // send other info
     json.clear();
     getOtherInfo(json);
     if (mqttClient->publish((String(mqtt_info->mqttBaseTopic) + F("/other")).c_str(), String(json).c_str(), true))
     {
-        BWC_LOG_P(PSTR("MQTT > other published\n"),0);
+        BWC_LOG_P(PSTR("MQTT > other published\n"), 0);
     }
     else
     {
-        BWC_LOG_P(PSTR("MQTT > other not published\n"),0);
+        BWC_LOG_P(PSTR("MQTT > other not published\n"), 0);
     }
     BWC_YIELD;
 }
 
 void sendMQTTConfig()
 {
-    BWC_LOG_P(PSTR("MQTT > sending config\n"),0);
+    BWC_LOG_P(PSTR("MQTT > sending config\n"), 0);
     String json;
     json.reserve(320);
     bwc->getJSONSettings(json);
@@ -443,16 +453,28 @@ void sendMQTTConfig()
 void startWiFi()
 {
     BWC_LOG_P(PSTR("startWiFi() @ millis: %d\n"), millis());
-    //WiFi.mode(WIFI_STA);
+    // WiFi.mode(WIFI_STA);
     WiFi.setAutoReconnect(false);
     WiFi.persistent(true);
     WiFi.hostname(DEVICE_NAME_F);
-    WiFi.mode(WIFI_STA); //WiFi.setOutputPower(15.0);
+    WiFi.mode(WIFI_STA); // WiFi.setOutputPower(15.0);
     loadWifi();
+
+    // RF tuning from wifi.json (web-UI editable, no rebuild needed).
+    // Defaults: txPowerDbm=20.5 (max), noModemSleep=true, phyMode=auto.
+    WiFi.setOutputPower(wifi_info->txPowerDbm);
+    WiFi.setSleep(wifi_info->noModemSleep ? WIFI_NONE_SLEEP : WIFI_MODEM_SLEEP);
+    switch (wifi_info->phyMode)
+    {
+        case 1: WiFi.setPhyMode(WIFI_PHY_MODE_11B); break; // most robust on weak links
+        case 2: WiFi.setPhyMode(WIFI_PHY_MODE_11G); break;
+        case 3: WiFi.setPhyMode(WIFI_PHY_MODE_11N); break;
+        default: /* leave default (auto) */ break;
+    }
 
     if (wifi_info->enableStaticIp4)
     {
-        BWC_LOG_P(PSTR("Setting static IP\n"),0);
+        BWC_LOG_P(PSTR("Setting static IP\n"), 0);
         IPAddress ip4Address;
         IPAddress ip4Gateway;
         IPAddress ip4Subnet;
@@ -463,7 +485,7 @@ void startWiFi()
         ip4Subnet.fromString(wifi_info->ip4Subnet_str);
         ip4DnsPrimary.fromString(wifi_info->ip4DnsPrimary_str);
         ip4DnsSecondary.fromString(wifi_info->ip4DnsSecondary_str);
-        BWC_LOG_P(PSTR("WiFi > using static IP %s on gateway %s\n"),ip4Address.toString().c_str(), ip4Gateway.toString().c_str());
+        BWC_LOG_P(PSTR("WiFi > using static IP %s on gateway %s\n"), ip4Address.toString().c_str(), ip4Gateway.toString().c_str());
         WiFi.config(ip4Address, ip4Gateway, ip4Subnet, ip4DnsPrimary, ip4DnsSecondary);
     }
 
@@ -567,19 +589,20 @@ void wifi_manual_reconnect()
 void startSoftAp()
 {
     disconnected_flag = false;
-    if(WiFi.getMode() == WIFI_AP_STA) {
-        BWC_LOG_P(PSTR("Soft AP IP: %s.\n"),WiFi.softAPIP().toString().c_str());
+    if (WiFi.getMode() == WIFI_AP_STA)
+    {
+        BWC_LOG_P(PSTR("Soft AP IP: %s.\n"), WiFi.softAPIP().toString().c_str());
         return;
     }
-    BWC_LOG_P(PSTR("Station > disconnected. Starting soft AP\n"),0);
+    BWC_LOG_P(PSTR("Station > disconnected. Starting soft AP\n"), 0);
     bwc->print(F("check network"));
     WiFi.mode(WIFI_AP_STA);
-    IPAddress local_IP(192,168,4,2);
-    IPAddress gateway(192,168,4,1);
-    IPAddress subnet(255,255,255,0);
-    BWC_LOG_P(PSTR("WiFi > soft-AP configuration: %s\n"),WiFi.softAPConfig(local_IP, gateway, subnet) ? "OK" : "Failed!");
-    BWC_LOG_P(PSTR("WiFi > soft AP mode: %s\n"),WiFi.softAP(WM_AP_NAME_F, WM_AP_PASSWORD_F)?"OK": "SoftAP fail");
-    BWC_LOG_P(PSTR("WiFi > Soft AP IP: %s\n"),WiFi.softAPIP().toString().c_str());
+    IPAddress local_IP(192, 168, 4, 2);
+    IPAddress gateway(192, 168, 4, 1);
+    IPAddress subnet(255, 255, 255, 0);
+    BWC_LOG_P(PSTR("WiFi > soft-AP configuration: %s\n"), WiFi.softAPConfig(local_IP, gateway, subnet) ? "OK" : "Failed!");
+    BWC_LOG_P(PSTR("WiFi > soft AP mode: %s\n"), WiFi.softAP(WM_AP_NAME_F, WM_AP_PASSWORD_F) ? "OK" : "SoftAP fail");
+    BWC_LOG_P(PSTR("WiFi > Soft AP IP: %s\n"), WiFi.softAPIP().toString().c_str());
     BWC_YIELD;
 }
 
@@ -592,7 +615,7 @@ void checkNTP()
 {
     time_t now = time(nullptr);
     // static uint8_t ntpTryNumber = 0;
-    if(now < 57600)
+    if (now < 57600)
     {
         // if (++ntpTryNumber == 10) {
         //     ntpTryNumber = 0; //reset until next check
@@ -600,18 +623,20 @@ void checkNTP()
         // }
         return;
     }
-    ntpCheck_ticker->detach(); //time is set, don't check again
+    ntpCheck_ticker->detach(); // time is set, don't check again
     struct tm timeinfo;
     gmtime_r(&now, &timeinfo);
     time_t boot_timestamp = getBootTime();
-    tm * boot_time_tm = gmtime(&boot_timestamp);
+    tm *boot_time_tm = gmtime(&boot_timestamp);
     char boot_time_str[64];
     strftime(boot_time_str, 64, "%F %T", boot_time_tm);
     bwc->reboot_time_str = String(boot_time_str);
     bwc->reboot_time_t = boot_timestamp;
-    if(firstNtpSyncAfterBoot)
+    if (firstNtpSyncAfterBoot)
     {
-        BWC_LOG_P(PSTR("NTP > synced: %s. Saving boot info.\n"),bwc->reboot_time_str.c_str());
+        BWC_LOG_P(PSTR("NTP > synced: %s. Saving boot info.\n"), bwc->reboot_time_str.c_str());
+        if (mqtt_info->useMqtt && mqttClient->loop())
+            mqttClient->publish((String(mqtt_info->mqttBaseTopic) + F("/reboot_time")).c_str(), (bwc->reboot_time_str + 'Z').c_str(), true);
         firstNtpSyncAfterBoot = false;
         bwc->saveRebootInfo();
     }
@@ -623,37 +648,40 @@ void checkNTP()
  */
 void startNTP()
 {
-    BWC_LOG_P(PSTR("NTP > start\n"),0);
-    configTime(0,0,wifi_info->ip4NTP_str, F("pool.ntp.org"), F("time.nist.gov"));
+    BWC_LOG_P(PSTR("NTP > start\n"), 0);
+    configTime(0, 0, wifi_info->ip4NTP_str, F("pool.ntp.org"), F("time.nist.gov"));
     ntpCheck_ticker->attach(3.0, checkNTP_ISR);
 }
 
 void startOTA()
 {
-    BWC_LOG_P(PSTR("OTA > start\n"),0);
+    BWC_LOG_P(PSTR("OTA > start\n"), 0);
     String dname = DEVICE_NAME_F;
     String pw = OTA_PSWD_F;
     ArduinoOTA.setHostname(dname.c_str());
     ArduinoOTA.setPassword(pw.c_str());
 
-    ArduinoOTA.onStart([]() {
+    ArduinoOTA.onStart([]()
+                       {
         // Serial.println(F("OTA > Start"));
-        stopall();
-    });
-    ArduinoOTA.onEnd([]() {
-        // Serial.println(F("OTA > End"));
-    });
-    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-        // Serial.printf("OTA > Progress: %u%%\r\n", (progress / (total / 100)));
-    });
-    ArduinoOTA.onError([](ota_error_t error) {
-        // Serial.printf("OTA > Error[%u]: ", error);
-        // if (error == OTA_AUTH_ERROR) Serial.println(F("Auth Failed"));
-        // else if (error == OTA_BEGIN_ERROR) Serial.println(F("Begin Failed"));
-        // else if (error == OTA_CONNECT_ERROR) Serial.println(F("Connect Failed"));
-        // else if (error == OTA_RECEIVE_ERROR) Serial.println(F("Receive Failed"));
-        // else if (error == OTA_END_ERROR) Serial.println(F("End Failed"));
-    });
+        stopall(); });
+    ArduinoOTA.onEnd([]()
+                     {
+                         // Serial.println(F("OTA > End"));
+                     });
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
+                          {
+                              // Serial.printf("OTA > Progress: %u%%\r\n", (progress / (total / 100)));
+                          });
+    ArduinoOTA.onError([](ota_error_t error)
+                       {
+                           // Serial.printf("OTA > Error[%u]: ", error);
+                           // if (error == OTA_AUTH_ERROR) Serial.println(F("Auth Failed"));
+                           // else if (error == OTA_BEGIN_ERROR) Serial.println(F("Begin Failed"));
+                           // else if (error == OTA_CONNECT_ERROR) Serial.println(F("Connect Failed"));
+                           // else if (error == OTA_RECEIVE_ERROR) Serial.println(F("Receive Failed"));
+                           // else if (error == OTA_END_ERROR) Serial.println(F("End Failed"));
+                       });
     ArduinoOTA.begin();
     // Serial.println(F("OTA > ready"));
 }
@@ -662,32 +690,35 @@ void stopall()
 {
     BWC_LOG_P(PSTR("Stop all > Free mem before stop: %d\n"), ESP.getFreeHeap());
     bwc->stop();
-    BWC_LOG_P(PSTR("MQTT > detaching\n"),0);
+    BWC_LOG_P(PSTR("MQTT > detaching\n"), 0);
     updateMqttTimer->detach();
-    BWC_LOG_P(PSTR("Periodic timer > detaching\n"),0);
+    BWC_LOG_P(PSTR("Periodic timer > detaching\n"), 0);
     periodicTimer->detach();
-    BWC_LOG_P(PSTR("WS > detaching\n"),0);
+    BWC_LOG_P(PSTR("WS > detaching\n"), 0);
     updateWSTimer->detach();
-    if(ntpCheck_ticker->active()) ntpCheck_ticker->detach();
+    if (ntpCheck_ticker->active())
+        ntpCheck_ticker->detach();
     // if(checkWifi_ticker->active()) checkWifi_ticker->detach();
-    //bwc->saveSettings();
+    // bwc->saveSettings();
     delete tempSensors;
     delete oneWire;
-    BWC_LOG_P(PSTR("MQTT > stopping\n"),0);
-    if(mqtt_info->useMqtt) mqttClient->disconnect();
-    if(aWifiClient) delete aWifiClient;
+    BWC_LOG_P(PSTR("MQTT > stopping\n"), 0);
+    if (mqtt_info->useMqtt)
+        mqttClient->disconnect();
+    if (aWifiClient)
+        delete aWifiClient;
     aWifiClient = nullptr;
     // delete mqttClient; //Compiler nagging about not deleting virtual classes.
     mqttClient = nullptr;
-    BWC_LOG_P(PSTR("HTTPServer > stopping\n"),0);
+    BWC_LOG_P(PSTR("HTTPServer > stopping\n"), 0);
     server->stop();
     delete server;
     server = nullptr;
-    BWC_LOG_P(PSTR("WS > stopping\n"),0);
+    BWC_LOG_P(PSTR("WS > stopping\n"), 0);
     webSocket->close();
     delete webSocket;
     webSocket = nullptr;
-    BWC_LOG_P(PSTR("FS > stopping\n"),0);
+    BWC_LOG_P(PSTR("FS > stopping\n"), 0);
     LittleFS.end();
     BWC_LOG_P(PSTR("Stop all > done. Free mem: %d\n"), ESP.getFreeHeap());
 }
@@ -695,19 +726,25 @@ void stopall()
 /*pause: action=true cont: action=false*/
 void pause_all(bool action)
 {
-    if(action)
+    if (action)
     {
-        if(periodicTimer->active()) periodicTimer->detach();
+        if (periodicTimer->active())
+            periodicTimer->detach();
         // if(startComplete_ticker->active()) startComplete_ticker->detach();
-        if(updateWSTimer->active()) updateWSTimer->detach();
+        if (updateWSTimer->active())
+            updateWSTimer->detach();
         // if(bootlogTimer->active()) bootlogTimer->detach();
-        if(ntpCheck_ticker->active()) ntpCheck_ticker->detach();
-    } else 
+        if (ntpCheck_ticker->active())
+            ntpCheck_ticker->detach();
+    }
+    else
     {
-        periodicTimer->attach(periodicTimerInterval, []{ periodicTimerFlag = true; });
+        periodicTimer->attach(periodicTimerInterval, []
+                              { periodicTimerFlag = true; });
         // startComplete_ticker->attach(60, []{ if(mqtt_info->useMqtt) enableMqtt = true; startComplete_ticker->detach(); });
-        updateWSTimer->attach(WS_PERIOD, []{ sendWSFlag = true; });
-        //bootlogTimer.attach(5, []{ if(DateTime.isTimeValid()) {bwc->saveRebootInfo(); bootlogTimer.detach();} });
+        updateWSTimer->attach(WS_PERIOD, []
+                              { sendWSFlag = true; });
+        // bootlogTimer.attach(5, []{ if(DateTime.isTimeValid()) {bwc->saveRebootInfo(); bootlogTimer.detach();} });
     }
     bwc->pause_all(action);
 }
@@ -716,14 +753,14 @@ void startWebSocket()
 {
     HeapSelectIram ephemeral;
     BWC_LOG_P(PSTR("WS > start. IRam heap: %d\n"), ESP.getFreeHeap());
-    if(webSocket != nullptr)
+    if (webSocket != nullptr)
     {
         webSocket->disconnect();
         webSocket->close();
         delete webSocket;
         webSocket = nullptr;
     }
-    webSocket = new WebSocketsServer(81);
+    webSocket = new WebSocketsServer(8080);
     webSocket->begin();
     // webSocket->enableHeartbeat(11000, 5000, 2);
     webSocket->onEvent(webSocketEvent);
@@ -733,56 +770,56 @@ void startWebSocket()
 /**
  * handle web socket events
  */
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t len)
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t len)
 {
     // When a WebSocket message is received
     switch (type)
     {
-        // if the websocket is disconnected
-        case WStype_DISCONNECTED:
-            BWC_LOG_P(PSTR("WS > [%u] Disconnected!\n"), num);
+    // if the websocket is disconnected
+    case WStype_DISCONNECTED:
+        BWC_LOG_P(PSTR("WS > [%u] Disconnected!\n"), num);
         break;
 
-        // if a new websocket connection is established
-        case WStype_CONNECTED:
+    // if a new websocket connection is established
+    case WStype_CONNECTED:
+    {
+        // IPAddress ip = webSocket->remoteIP(num);
+        // Serial.printf("WebSocket > [%u] Connected from %d.%d.%d.%d url: %s\r\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+        sendWS();
+    }
+    break;
+
+    // if new text data is received
+    case WStype_TEXT:
+    {
+        // Serial.printf("WebSocket > [%u] get Text: %s\r\n", num, payload);
+        // DynamicJsonDocument doc(256);
+        StaticJsonDocument<256> doc;
+        DeserializationError error = deserializeJson(doc, payload);
+        if (error)
         {
-            // IPAddress ip = webSocket->remoteIP(num);
-            // Serial.printf("WebSocket > [%u] Connected from %d.%d.%d.%d url: %s\r\n", num, ip[0], ip[1], ip[2], ip[3], payload);
-            sendWS();
+            BWC_LOG_P(PSTR("WS > JSON command failed"), 0);
+            return;
         }
-        break;
 
-        // if new text data is received
-        case WStype_TEXT:
-        {
-            // Serial.printf("WebSocket > [%u] get Text: %s\r\n", num, payload);
-            // DynamicJsonDocument doc(256);
-            StaticJsonDocument<256> doc;
-            DeserializationError error = deserializeJson(doc, payload);
-            if (error)
-            {
-                BWC_LOG_P(PSTR("WS > JSON command failed"),0);
-                return;
-            }
+        // Copy values from the JsonDocument to the Config
+        Commands command = doc[F("CMD")];
+        int64_t value = doc[F("VALUE")];
+        int64_t xtime = doc[F("XTIME")];
+        int64_t interval = doc[F("INTERVAL")];
+        String txt = doc[F("TXT")] | "";
+        command_que_item item;
+        item.cmd = command;
+        item.val = value;
+        item.xtime = xtime;
+        item.interval = interval;
+        item.text = txt;
+        bwc->add_command(item);
+    }
+    break;
 
-            // Copy values from the JsonDocument to the Config
-            Commands command = doc[F("CMD")];
-            int64_t value = doc[F("VALUE")];
-            int64_t xtime = doc[F("XTIME")];
-            int64_t interval = doc[F("INTERVAL")];
-            String txt = doc[F("TXT")] | "";
-            command_que_item item;
-            item.cmd = command;
-            item.val = value;
-            item.xtime = xtime;
-            item.interval = interval;
-            item.text = txt;
-            bwc->add_command(item);
-        }
-        break;
-
-        default:
-            BWC_LOG_P(PSTR("WebSocket > Type:[%u]\r\n"), (unsigned int)type);
+    default:
+        BWC_LOG_P(PSTR("WebSocket > Type:[%u]\r\n"), (unsigned int)type);
         break;
     }
 }
@@ -792,8 +829,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t len)
  */
 void startHttpServer()
 {
-    BWC_LOG_P(PSTR("HTTP Server > start/restart.\n"),0);
-    if(server != nullptr)
+    BWC_LOG_P(PSTR("HTTP Server > start/restart.\n"), 0);
+    if (server != nullptr)
     {
         server->stop();
         server->close();
@@ -842,19 +879,20 @@ void startHttpServer()
         server->on(F("/dir/"), handleDir);
         server->on(F("/hwtest/"), handleHWtest);
         server->on(F("/inputs/"), handleInputs);
-        server->on(F("/upload.html"), HTTP_POST, [](){
-            server->send(200, F("text/plain"), "");
-        }, handleFileUpload);
+        server->on(F("/upload.html"), HTTP_POST, []()
+                   { server->send(200, F("text/plain"), ""); }, handleFileUpload);
         server->on(F("/remove.html"), HTTP_POST, handleFileRemove);
         server->on(F("/remove/"), HTTP_GET, handleFileRemove);
         server->on(F("/restart/"), handleRestart);
-        server->on(F("/metrics"), handlePrometheusMetrics);  //prometheus metrics
+        server->on(F("/metrics"), handlePrometheusMetrics); // prometheus metrics
         server->on(F("/info/"), handleESPInfo);
         server->on(F("/api/watchdog-status"), HTTP_POST, handleWatchdogStatus);
         server->on(F("/sethardware/"), handleSetHardware);
         server->on(F("/gethardware/"), handleGetHardware);
-        server->on(F("/debug-on/"), [](){bwc->BWC_DEBUG = true; server->send(200, F("text/plain"), "ok");});
-        server->on(F("/debug-off/"), [](){bwc->BWC_DEBUG = false; server->send(200, F("text/plain"), "ok");});
+        server->on(F("/debug-on/"), []()
+                   {bwc->BWC_DEBUG = true; server->send(200, F("text/plain"), "ok"); });
+        server->on(F("/debug-off/"), []()
+                   {bwc->BWC_DEBUG = false; server->send(200, F("text/plain"), "ok"); });
         server->on(F("/cmdq_file/"), handle_cmdq_file);
 
         // if someone requests any other file or page, go to function 'handleNotFound'
@@ -863,13 +901,14 @@ void startHttpServer()
         // start the HTTP server
         server->begin();
     }
-    
+
     // Serial.println(F("HTTP > server started"));
 }
 
 void handleGetHardware()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
     File file = LittleFS.open(F("hwcfg.json"), "r");
     if (!file)
     {
@@ -884,7 +923,8 @@ void handleGetHardware()
 
 void handleSetHardware()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
     String message = server->arg(0);
     File file = LittleFS.open(F("hwcfg.json"), "w");
     if (!file)
@@ -900,7 +940,7 @@ void handleSetHardware()
 
 void preparefortest()
 {
-    for(int i = 0; i < 7; i++)
+    for (int i = 0; i < 7; i++)
     {
         pinMode(bwc->pins[i], INPUT);
     }
@@ -915,45 +955,45 @@ void handleInputs()
     bwc->stop();
     preparefortest();
 
-    /* 
+    /*
         Log all edges to a file in HEAP RAM. When that log is full send to web client
     */
 
-    unsigned long pin_states = 0, old_pin_states = 0; //to store result from READ_PERI_REG (GPIOs)
-    unsigned long t; //timestamp - micros
+    unsigned long pin_states = 0, old_pin_states = 0; // to store result from READ_PERI_REG (GPIOs)
+    unsigned long t;                                  // timestamp - micros
     uint32_t edge_count = 0;
     const int array_len = 1024;
-    unsigned long* p_input_log = new unsigned long[array_len*2];
+    unsigned long *p_input_log = new unsigned long[array_len * 2];
 
-    while(edge_count < array_len)
+    while (edge_count < array_len)
     {
-        pin_states = READ_PERI_REG(PIN_IN); //mix unsigned long with uint32_t which is the same
-        if(pin_states != old_pin_states)
+        pin_states = READ_PERI_REG(PIN_IN); // mix unsigned long with uint32_t which is the same
+        if (pin_states != old_pin_states)
         {
             t = micros();
-            p_input_log[edge_count] = t; //log time
-            p_input_log[edge_count + array_len] = pin_states; //log states (all gpios)
+            p_input_log[edge_count] = t;                      // log time
+            p_input_log[edge_count + array_len] = pin_states; // log states (all gpios)
             edge_count++;
         }
         old_pin_states = pin_states;
-        yield(); //keep the watchdog away and manage wifi etc. Unclear how much time we waste here...
+        yield(); // keep the watchdog away and manage wifi etc. Unclear how much time we waste here...
     }
 
     /* send statistics to client */
     char s[128];
     sprintf_P(s, PSTR("micros, gpio registers\n"));
     server->sendContent(s);
-    for(int i = 0; i < array_len; i++)
+    for (int i = 0; i < array_len; i++)
     {
-        sprintf_P(s, PSTR("%u,%X\n"), p_input_log[i], p_input_log[i+array_len]);
+        sprintf_P(s, PSTR("%u,%X\n"), p_input_log[i], p_input_log[i + array_len]);
         server->sendContent(s);
-        yield(); //keep the watchdog away and manage wifi etc. Unclear how much time we waste here...
+        yield(); // keep the watchdog away and manage wifi etc. Unclear how much time we waste here...
     }
     sprintf_P(s, PSTR("Cut and paste all above. Zip and post on forum for help.\n"));
     server->sendContent(s);
     server->sendContent("");
 
-    delete [] p_input_log;
+    delete[] p_input_log;
 
     bwc->setup();
 }
@@ -971,11 +1011,11 @@ void handleHWtest()
     bwc->stop();
     preparefortest();
 
-    for(int i = 0; i < 10; i++)
+    for (int i = 0; i < 10; i++)
     {
-        sprintf_P(result, PSTR("\nConnect the cables now!\nStarting test in %d seconds...\n"), 10-i);
+        sprintf_P(result, PSTR("\nConnect the cables now!\nStarting test in %d seconds...\n"), 10 - i);
         server->sendContent(result);
-        for(int t = 0; t < 512; t++)
+        for (int t = 0; t < 512; t++)
             server->sendContent(" ");
         delay(1000);
     }
@@ -983,21 +1023,21 @@ void handleHWtest()
     /* First test CIO out/ DSP in ports */
     sprintf_P(result, PSTR("Start test. Seq begins with HIGH, then alters.\n\n"));
     server->sendContent(result);
-    for(int pin = 0; pin < 3; pin++)
+    for (int pin = 0; pin < 3; pin++)
     {
-        sprintf_P(result, PSTR("Sending on D%d, receiving on D%d\n"), gpio2dp(bwc->pins[pin]), gpio2dp(bwc->pins[pin+3]));
+        sprintf_P(result, PSTR("Sending on D%d, receiving on D%d\n"), gpio2dp(bwc->pins[pin]), gpio2dp(bwc->pins[pin + 3]));
         server->sendContent(result);
         pinMode(bwc->pins[pin], OUTPUT);
-        pinMode(bwc->pins[pin+3], INPUT);
-        for(int t = 0; t < 100; t++)
+        pinMode(bwc->pins[pin + 3], INPUT);
+        for (int t = 0; t < 100; t++)
         {
             state = !state;
             digitalWrite(bwc->pins[pin], state);
             delayMicroseconds(100);
-            bool error = digitalRead(bwc->pins[pin+3]) != state;
+            bool error = digitalRead(bwc->pins[pin + 3]) != state;
             errors += error;
-            if(error)
-                if(state)
+            if (error)
+                if (state)
                     server->sendContent("1");
                 else
                     server->sendContent("0");
@@ -1012,21 +1052,21 @@ void handleHWtest()
 
     /* Test the other way around */
 
-    for(int pin = 0; pin < 3; pin++)
+    for (int pin = 0; pin < 3; pin++)
     {
-        sprintf_P(result, PSTR("Sending on D%d, receiving on D%d\n"), gpio2dp(bwc->pins[pin+3]), gpio2dp(bwc->pins[pin]));
+        sprintf_P(result, PSTR("Sending on D%d, receiving on D%d\n"), gpio2dp(bwc->pins[pin + 3]), gpio2dp(bwc->pins[pin]));
         server->sendContent(result);
-        pinMode(bwc->pins[pin+3], OUTPUT);
+        pinMode(bwc->pins[pin + 3], OUTPUT);
         pinMode(bwc->pins[pin], INPUT);
-        for(int t = 0; t < 100; t++)
+        for (int t = 0; t < 100; t++)
         {
             state = !state;
-            digitalWrite(bwc->pins[pin+3], state);
+            digitalWrite(bwc->pins[pin + 3], state);
             delayMicroseconds(100);
             bool error = digitalRead(bwc->pins[pin]) != state;
             errors += error;
-            if(error)
-                if(state)
+            if (error)
+                if (state)
                     server->sendContent("1");
                 else
                     server->sendContent("0");
@@ -1049,38 +1089,38 @@ void handleHWtest()
     server->sendContent(result);
 
     server->sendContent("");
-    while(true)
+    while (true)
     {
         /*CIO pins HIGH*/
-        for(int pin = 0; pin < 3; pin++)
+        for (int pin = 0; pin < 3; pin++)
         {
-            pinMode(bwc->pins[pin+3], INPUT);
-            pinMode(bwc->pins[pin+0], OUTPUT);
+            pinMode(bwc->pins[pin + 3], INPUT);
+            pinMode(bwc->pins[pin + 0], OUTPUT);
             digitalWrite(bwc->pins[pin], HIGH);
         }
         delay(5000);
         /*CIO pins LOW*/
-        for(int pin = 0; pin < 3; pin++)
+        for (int pin = 0; pin < 3; pin++)
         {
-            pinMode(bwc->pins[pin+3], INPUT);
-            pinMode(bwc->pins[pin+0], OUTPUT);
+            pinMode(bwc->pins[pin + 3], INPUT);
+            pinMode(bwc->pins[pin + 0], OUTPUT);
             digitalWrite(bwc->pins[pin], LOW);
         }
         delay(5000);
         /*DSP pins HIGH*/
-        for(int pin = 0; pin < 3; pin++)
+        for (int pin = 0; pin < 3; pin++)
         {
-            pinMode(bwc->pins[pin+0], INPUT);
-            pinMode(bwc->pins[pin+3], OUTPUT);
-            digitalWrite(bwc->pins[pin+3], HIGH);
+            pinMode(bwc->pins[pin + 0], INPUT);
+            pinMode(bwc->pins[pin + 3], OUTPUT);
+            digitalWrite(bwc->pins[pin + 3], HIGH);
         }
         delay(5000);
         /*DSP pins LOW*/
-        for(int pin = 0; pin < 3; pin++)
+        for (int pin = 0; pin < 3; pin++)
         {
-            pinMode(bwc->pins[pin+0], INPUT);
-            pinMode(bwc->pins[pin+3], OUTPUT);
-            digitalWrite(bwc->pins[pin+3], LOW);
+            pinMode(bwc->pins[pin + 0], INPUT);
+            pinMode(bwc->pins[pin + 3], OUTPUT);
+            digitalWrite(bwc->pins[pin + 3], LOW);
         }
         delay(5000);
     }
@@ -1096,14 +1136,20 @@ void handleNotFound()
     }
 }
 
-String getContentType(const String& filename)
+String getContentType(const String &filename)
 {
-    if (filename.endsWith(".html")) return F("text/html");
-    else if (filename.endsWith(".css")) return F("text/css");
-    else if (filename.endsWith(".js")) return F("application/javascript");
-    else if (filename.endsWith(".ico")) return F("image/x-icon");
-    else if (filename.endsWith(".gz")) return F("application/x-gzip");
-    else if (filename.endsWith(".json")) return F("application/json");
+    if (filename.endsWith(".html"))
+        return F("text/html");
+    else if (filename.endsWith(".css"))
+        return F("text/css");
+    else if (filename.endsWith(".js"))
+        return F("application/javascript");
+    else if (filename.endsWith(".ico"))
+        return F("image/x-icon");
+    else if (filename.endsWith(".gz"))
+        return F("application/x-gzip");
+    else if (filename.endsWith(".json"))
+        return F("application/json");
     return F("text/plain");
 }
 
@@ -1143,22 +1189,24 @@ bool handleFileRead(String path)
         pause_all(false);
         return true;
     }
-    String contentType = getContentType(path);                  // Get the MIME type
+    String contentType = getContentType(path); // Get the MIME type
     String pathWithGz = path + ".gz";
-    if (LittleFS.exists(pathWithGz) || LittleFS.exists(path)) { // If the file exists, either as a compressed archive, or normal
-        if (LittleFS.exists(pathWithGz))                        // If there's a compressed version available
-            path += ".gz";                                      // Use the compressed version
-        File file = LittleFS.open(path, "r");                   // Open the file
+    if (LittleFS.exists(pathWithGz) || LittleFS.exists(path))
+    {                                         // If the file exists, either as a compressed archive, or normal
+        if (LittleFS.exists(pathWithGz))      // If there's a compressed version available
+            path += ".gz";                    // Use the compressed version
+        File file = LittleFS.open(path, "r"); // Open the file
         size_t fsize = file.size();
         BWC_YIELD;
-        size_t sent = server->streamFile(file, contentType);    // Send it to the client
-        BWC_LOG_P(PSTR("File size: %d\n"),fsize);
-        BWC_LOG_P(PSTR("HTTPServer > Filename: %s. Bytes sent: %d\n"),path.c_str(),sent);
-        if(fsize != sent){
-            BWC_LOG_P(PSTR("^^^^^ File not completed ^^^^^\n"),0);
+        size_t sent = server->streamFile(file, contentType); // Send it to the client
+        BWC_LOG_P(PSTR("File size: %d\n"), fsize);
+        BWC_LOG_P(PSTR("HTTPServer > Filename: %s. Bytes sent: %d\n"), path.c_str(), sent);
+        if (fsize != sent)
+        {
+            BWC_LOG_P(PSTR("^^^^^ File not completed ^^^^^\n"), 0);
         }
         pause_all(false);
-        file.close();                                           // Close the file again
+        file.close(); // Close the file again
         return true;
     }
     pause_all(false);
@@ -1190,7 +1238,8 @@ bool checkHttpPost(HTTPMethod method)
  */
 void handleGetConfig()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     String json;
     json.reserve(320);
@@ -1205,7 +1254,8 @@ void handleGetConfig()
  */
 void handleSetConfig()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     String message = server->arg(0);
     bwc->setJSONSettings(message);
@@ -1221,7 +1271,8 @@ void handleSetConfig()
  */
 void handleGetCommandQueue()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     String json = bwc->getJSONCommandQueue();
     server->send(200, F("application/json"), json);
@@ -1241,7 +1292,7 @@ void handleAddCommand()
     DeserializationError error = deserializeJson(doc, message);
     if (error)
     {
-        server->send(400, F("text/plain"), F("Error deserializing message: ")+message);
+        server->send(400, F("text/plain"), F("Error deserializing message: ") + message);
         return;
     }
 
@@ -1267,7 +1318,8 @@ void handleAddCommand()
  */
 void handleEditCommand()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     // DynamicJsonDocument doc(256);
     StaticJsonDocument<256> doc;
@@ -1302,7 +1354,8 @@ void handleEditCommand()
  */
 void handleDelCommand()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     // DynamicJsonDocument doc(256);
     StaticJsonDocument<256> doc;
@@ -1321,7 +1374,8 @@ void handleDelCommand()
 
 void handle_cmdq_file()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     // DynamicJsonDocument doc(256);
     StaticJsonDocument<256> doc;
@@ -1337,13 +1391,13 @@ void handle_cmdq_file()
     String filename = "/";
     filename += doc[F("NAME")].as<String>();
 
-    if(action.equals("load"))
+    if (action.equals("load"))
     {
         copyFile("/cmdq.json", "/cmdq.backup");
         copyFile(filename, "/cmdq.json");
         bwc->reloadCommandQueue();
     }
-    if(action.equals("save"))
+    if (action.equals("save"))
     {
         copyFile("/cmdq.json", filename);
     }
@@ -1354,27 +1408,27 @@ void handle_cmdq_file()
 
 void copyFile(String source, String dest)
 {
-    char ibuffer[64];  //declare a buffer
-    
-    File f_source = LittleFS.open(source, "r");    //open source file to read
+    char ibuffer[64]; // declare a buffer
+
+    File f_source = LittleFS.open(source, "r"); // open source file to read
     if (!f_source)
     {
         return;
     }
 
-    File f_dest = LittleFS.open(dest, "w");    //open destination file to write
+    File f_dest = LittleFS.open(dest, "w"); // open destination file to write
     if (!f_dest)
     {
         return;
     }
-    
+
     while (f_source.available() > 0)
     {
         byte i = f_source.readBytes(ibuffer, 64); // i = number of bytes placed in buffer from file f_source
-        f_dest.write(ibuffer, i);               // write i bytes from buffer to file f_dest
+        f_dest.write(ibuffer, i);                 // write i bytes from buffer to file f_dest
     }
-    
-    f_dest.close(); // done, close the destination file
+
+    f_dest.close();   // done, close the destination file
     f_source.close(); // done, close the source file
     BWC_YIELD;
 }
@@ -1393,9 +1447,9 @@ void loadWebConfig()
         DeserializationError error = deserializeJson(doc, file);
         if (error)
         {
-        // Serial.println(F("Failed to deserialize webconfig.json"));
-        file.close();
-        return;
+            // Serial.println(F("Failed to deserialize webconfig.json"));
+            file.close();
+            return;
         }
     }
     else
@@ -1450,7 +1504,8 @@ void saveWebConfig()
  */
 void handleGetWebConfig()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     // DynamicJsonDocument doc(256);
     StaticJsonDocument<256> doc;
@@ -1477,7 +1532,8 @@ void handleGetWebConfig()
  */
 void handleSetWebConfig()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     // DynamicJsonDocument doc(256);
     StaticJsonDocument<256> doc;
@@ -1526,7 +1582,8 @@ void loadWifi()
     }
 
     wifi_info->enableAp = doc[F("enableAp")];
-    if(doc.containsKey(F("enableWM"))) wifi_info->enableWmApFallback = doc[F("enableWM")];
+    if (doc.containsKey(F("enableWM")))
+        wifi_info->enableWmApFallback = doc[F("enableWM")];
     wifi_info->apSsid = doc[F("apSsid")].as<String>();
     wifi_info->apPwd = doc[F("apPwd")].as<String>();
     // apBssid added 2026-06-01 — backwards-compatible with wifi.json files
@@ -1541,6 +1598,12 @@ void loadWifi()
     wifi_info->ip4DnsPrimary_str = doc[F("ip4DnsPrimary")].as<String>();
     wifi_info->ip4DnsSecondary_str = doc[F("ip4DnsSecondary")].as<String>();
     wifi_info->ip4NTP_str = doc[F("ip4NTP")].as<String>();
+
+    // RF tuning fields — only override defaults if present, so older
+    // wifi.json files (no RF section yet) keep working with defaults.
+    if (doc.containsKey(F("txPowerDbm")))   wifi_info->txPowerDbm   = doc[F("txPowerDbm")].as<float>();
+    if (doc.containsKey(F("noModemSleep"))) wifi_info->noModemSleep = doc[F("noModemSleep")].as<bool>();
+    if (doc.containsKey(F("phyMode")))      wifi_info->phyMode      = doc[F("phyMode")].as<int>();
 
     BWC_YIELD;
 }
@@ -1571,6 +1634,9 @@ void saveWifi()
     doc[F("ip4DnsPrimary")] = wifi_info->ip4DnsPrimary_str;
     doc[F("ip4DnsSecondary")] = wifi_info->ip4DnsSecondary_str;
     doc[F("ip4NTP")] = wifi_info->ip4NTP_str;
+    doc[F("txPowerDbm")]   = wifi_info->txPowerDbm;
+    doc[F("noModemSleep")] = wifi_info->noModemSleep;
+    doc[F("phyMode")]      = wifi_info->phyMode;
 
     if (serializeJson(doc, file) == 0)
     {
@@ -1586,7 +1652,8 @@ void saveWifi()
  */
 void handleGetWifi()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     DynamicJsonDocument doc(1024);
 
@@ -1639,8 +1706,11 @@ void handleGetWifi()
     doc[F("ip4DnsPrimary")] = wifi_info->ip4DnsPrimary_str;
     doc[F("ip4DnsSecondary")] = wifi_info->ip4DnsSecondary_str;
     doc[F("ip4NTP")] = wifi_info->ip4NTP_str;
+    doc[F("txPowerDbm")]   = wifi_info->txPowerDbm;
+    doc[F("noModemSleep")] = wifi_info->noModemSleep;
+    doc[F("phyMode")]      = wifi_info->phyMode;
     String json;
-    json.reserve(200);
+    json.reserve(280);
     if (serializeJson(doc, json) == 0)
     {
         json = F("{\"error\": \"Failed to serialize message\"}");
@@ -1654,7 +1724,8 @@ void handleGetWifi()
  */
 void handleSetWifi()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     DynamicJsonDocument doc(1024);
     String message = server->arg(0);
@@ -1667,7 +1738,8 @@ void handleSetWifi()
     }
 
     wifi_info->enableAp = doc[F("enableAp")];
-    if(doc.containsKey("enableWM")) wifi_info->enableWmApFallback = doc[F("enableWM")];
+    if (doc.containsKey("enableWM"))
+        wifi_info->enableWmApFallback = doc[F("enableWM")];
     wifi_info->apSsid = doc[F("apSsid")].as<String>();
     wifi_info->apPwd = doc[F("apPwd")].as<String>();
     if (doc.containsKey(F("apBssid"))) wifi_info->apBssid = doc[F("apBssid")].as<String>();
@@ -1679,6 +1751,9 @@ void handleSetWifi()
     wifi_info->ip4DnsPrimary_str = doc[F("ip4DnsPrimary")].as<String>();
     wifi_info->ip4DnsSecondary_str = doc[F("ip4DnsSecondary")].as<String>();
     wifi_info->ip4NTP_str = doc[F("ip4NTP")].as<String>();
+    if (doc.containsKey(F("txPowerDbm")))   wifi_info->txPowerDbm   = doc[F("txPowerDbm")].as<float>();
+    if (doc.containsKey(F("noModemSleep"))) wifi_info->noModemSleep = doc[F("noModemSleep")].as<bool>();
+    if (doc.containsKey(F("phyMode")))      wifi_info->phyMode      = doc[F("phyMode")].as<int>();
 
     saveWifi();
 
@@ -1796,13 +1871,13 @@ void handleResetWifi()
     resetWiFi();
 
     server->send(200, F("text/html"), F("WiFi connection reset (erase) ... done."));
-    // Serial.println(F("WiFi connection reset (erase) ... done."));
-    // Serial.println(F("ESP reset ..."));
-    #if defined(ESP8266)
+// Serial.println(F("WiFi connection reset (erase) ... done."));
+// Serial.println(F("ESP reset ..."));
+#if defined(ESP8266)
     ESP.reset();
-    #else
+#else
     ESP.restart();
-    #endif
+#endif
 }
 
 void resetWiFi()
@@ -1816,7 +1891,8 @@ void resetWiFi()
     periodicTimer->detach();
     updateMqttTimer->detach();
     updateWSTimer->detach();
-    if(ntpCheck_ticker->active()) ntpCheck_ticker->detach();
+    if (ntpCheck_ticker->active())
+        ntpCheck_ticker->detach();
     bwc->saveSettings();
     bwc->stop();
     delay(1000);
@@ -1826,7 +1902,7 @@ void resetWiFi()
     delay(1000);
     // ESP_WiFiManager wm;
     // wm.resetSettings();
-    //WiFi.disconnect();
+    // WiFi.disconnect();
     delay(1000);
 }
 
@@ -1838,7 +1914,7 @@ void loadMqtt()
     File file = LittleFS.open("mqtt.json", "r");
     if (!file)
     {
-        BWC_LOG_P(PSTR("MQTT > Failed to read mqtt.json. Using defaults.\n"),0);
+        BWC_LOG_P(PSTR("MQTT > Failed to read mqtt.json. Using defaults.\n"), 0);
         return;
     }
 
@@ -1908,7 +1984,8 @@ void saveMqtt()
  */
 void handleGetMqtt()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     DynamicJsonDocument doc(1024);
 
@@ -1941,7 +2018,8 @@ void handleGetMqtt()
  */
 void handleSetMqtt()
 {
-    if (!checkHttpPost(server->method())) return;
+    if (!checkHttpPost(server->method()))
+        return;
 
     DynamicJsonDocument doc(1024);
     String message = server->arg(0);
@@ -1986,9 +2064,10 @@ void handleDir()
     {
         // Serial.println(root.fileName());
         String href = root.fileName();
-        if (href.endsWith(".gz")) href.remove(href.length()-3);
+        if (href.endsWith(".gz"))
+            href.remove(href.length() - 3);
         mydir += F("<a href=\"/");
-        mydir +=href;
+        mydir += href;
         mydir += F("\">");
         mydir += root.fileName();
         mydir += F("</a>");
@@ -2011,7 +2090,7 @@ void handleDir()
 void handleFileUpload()
 {
     if (!webauth::requireAuth()) return;
-    HTTPUpload& upload = server->upload();
+    HTTPUpload &upload = server->upload();
     String path;
     /** a file variable to temporarily store the received file */
     if (upload.status == UPLOAD_FILE_START)
@@ -2034,7 +2113,7 @@ void handleFileUpload()
             }
         }
 
-        BWC_LOG_P(PSTR("FS > upload filename: %s\n"),path.c_str());
+        BWC_LOG_P(PSTR("FS > upload filename: %s\n"), path.c_str());
 
         // Open the file for writing in LittleFS (create if it doesn't exist)
         fsUploadFile = LittleFS.open(path, "w");
@@ -2055,7 +2134,7 @@ void handleFileUpload()
         if (fsUploadFile)
         {
             fsUploadFile.close();
-            BWC_LOG_P(PSTR("FS > upload size: %d\n"),upload.totalSize);
+            BWC_LOG_P(PSTR("FS > upload size: %d\n"), upload.totalSize);
             server->sendHeader(F("location"), F("success.html"));
             server->send(303);
             if (upload.filename == "cmdq.json")
@@ -2101,7 +2180,7 @@ void handleFileRemove()
     {
         // Serial.print(F("handleFileRemove success: "));
         // Serial.println(path);
-        if(server->method() == HTTP_GET)
+        if (server->method() == HTTP_GET)
             server->sendHeader(F("Location"), F("/dir/"));
         else
             server->sendHeader(F("Location"), F("/success.html"));
@@ -2129,21 +2208,25 @@ void handleRestart()
     delay(1000);
     stopall();
     delay(1000);
-    BWC_LOG_P(PSTR("ESP restart ...\n"),0);
+    BWC_LOG_P(PSTR("ESP restart ...\n"), 0);
     ESP.restart();
     delay(3000);
 }
 
-void updateStart(){
-    BWC_LOG_P(PSTR("OTA > update start\n"),0);
+void updateStart()
+{
+    BWC_LOG_P(PSTR("OTA > update start\n"), 0);
 }
-void updateEnd(){
-    BWC_LOG_P(PSTR("OTA > update finish\n"),0);
+void updateEnd()
+{
+    BWC_LOG_P(PSTR("OTA > update finish\n"), 0);
 }
-void udpateProgress(int cur, int total){
+void udpateProgress(int cur, int total)
+{
     BWC_LOG_P(PSTR("OTA: update process at %d of %d bytes...\n"), cur, total);
 }
-void updateError(int err){
+void updateError(int err)
+{
     BWC_LOG_P(PSTR("update fatal error code %d\n"), err);
 }
 
@@ -2156,9 +2239,10 @@ void startMqtt()
     {
         HeapSelectIram ephemeral;
         BWC_LOG_P(PSTR("MQTT > start. Iram heap: %d\n"), ESP.getFreeHeap());
-        if(!aWifiClient) aWifiClient = new WiFiClient;
-        if(!mqttClient) mqttClient = new PubSubClient(*aWifiClient);
-    
+        if (!aWifiClient)
+            aWifiClient = new WiFiClient;
+        if (!mqttClient)
+            mqttClient = new PubSubClient(*aWifiClient);
 
         // load mqtt credential file if it exists, and update default strings
         loadMqtt();
@@ -2188,7 +2272,7 @@ void startMqtt()
  * MQTT callback function
  * @author 877dev
  */
-void mqttCallback(char* topic, byte* payload, unsigned int length)
+void mqttCallback(char *topic, byte *payload, unsigned int length)
 {
     // Serial.print(F("MQTT > Message arrived ["));
     // Serial.print(topic);
@@ -2202,7 +2286,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
     {
         // DynamicJsonDocument doc(256);
         StaticJsonDocument<256> doc;
-        String message = (const char *) &payload[0];
+        String message = (const char *)&payload[0];
         DeserializationError error = deserializeJson(doc, message);
         if (error)
         {
@@ -2228,7 +2312,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
     if (String(topic).equals(String(mqtt_info->mqttBaseTopic) + F("/command_batch")))
     {
         DynamicJsonDocument doc(1024);
-        String message = (const char *) &payload[0];
+        String message = (const char *)&payload[0];
         DeserializationError error = deserializeJson(doc, message);
         if (error)
         {
@@ -2237,7 +2321,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
 
         JsonArray commandArray = doc.as<JsonArray>();
 
-        for (JsonVariant commandItem : commandArray) {
+        for (JsonVariant commandItem : commandArray)
+        {
             Commands command = commandItem[F("CMD")];
             int64_t value = commandItem[F("VALUE")];
             int64_t xtime = commandItem[F("XTIME")];
@@ -2257,7 +2342,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
 
     if (String(topic).equals(String(mqtt_info->mqttBaseTopic) + F("/set_config")))
     {
-        String message = (const char *) &payload[0];    
+        String message = (const char *)&payload[0];
         bwc->setJSONSettings(message);
         send_mqtt_cfg_needed = true;
     }
@@ -2273,24 +2358,25 @@ void mqttConnect()
     {
         return;
     }
-    BWC_LOG_P(PSTR("MQTT > connecting\n"),0);
+    BWC_LOG_P(PSTR("MQTT > connecting\n"), 0);
 
     // Serial.print(F("MQTT > Connecting ... "));
     // We'll connect with a Retained Last Will that updates the 'Status' topic with "Dead" when the device goes offline...
     if (mqttClient->connect(
-        mqtt_info->mqttClientId.c_str(), // client_id : the client ID to use when connecting to the server->
-        mqtt_info->mqttUsername.c_str(), // username : the username to use. If NULL, no username or password is used (const char[])
-        mqtt_info->mqttPassword.c_str(), // password : the password to use. If NULL, no password is used (const char[])setupHA
-        (String(mqtt_info->mqttBaseTopic) + F("/Status")).c_str(), // willTopic : the topic to be used by the will message (const char[])
-        0, // willQoS : the quality of service to be used by the will message (int : 0,1 or 2)
-        1, // willRetain : whether the will should be published with the retain flag (int : 0 or 1)
-        "Dead")) // willMessage : the payload of the will message (const char[])
+            mqtt_info->mqttClientId.c_str(),                           // client_id : the client ID to use when connecting to the server->
+            mqtt_info->mqttUsername.c_str(),                           // username : the username to use. If NULL, no username or password is used (const char[])
+            mqtt_info->mqttPassword.c_str(),                           // password : the password to use. If NULL, no password is used (const char[])setupHA
+            (String(mqtt_info->mqttBaseTopic) + F("/Status")).c_str(), // willTopic : the topic to be used by the will message (const char[])
+            0,                                                         // willQoS : the quality of service to be used by the will message (int : 0,1 or 2)
+            1,                                                         // willRetain : whether the will should be published with the retain flag (int : 0 or 1)
+            "Dead"))                                                   // willMessage : the payload of the will message (const char[])
     {
         // Serial.println(F("success!"));
         mqtt_connect_count++;
 
         // update MQTT every X seconds. (will also be updated on state changes)
-        updateMqttTimer->attach(mqtt_info->mqttTelemetryInterval, []{ sendMQTTFlag = true; });
+        updateMqttTimer->attach(mqtt_info->mqttTelemetryInterval, []
+                                { sendMQTTFlag = true; });
 
         // These all have the Retained flag set to true, so that the value is stored on the server and can be retrieved at any point
         // Check the 'Status' topic to see that the device is still online before relying on the data from these retained topics
@@ -2305,9 +2391,9 @@ void mqttConnect()
         mqttClient->subscribe((String(mqtt_info->mqttBaseTopic) + F("/set_config")).c_str());
         mqttClient->loop();
 
-        #ifdef ESP8266
+#ifdef ESP8266
         // mqttClient->publish((String(mqttBaseTopic) + "/reboot_time").c_str(), DateTime.format(DateFormatter::SIMPLE).c_str(), true);
-        mqttClient->publish((String(mqtt_info->mqttBaseTopic) + F("/reboot_time")).c_str(), (bwc->reboot_time_str+'Z').c_str(), true);
+        // mqttClient->publish((String(mqtt_info->mqttBaseTopic) + F("/reboot_time")).c_str(), (bwc->reboot_time_str+'Z').c_str(), true);
         mqttClient->publish((String(mqtt_info->mqttBaseTopic) + F("/reboot_reason")).c_str(), ESP.getResetReason().c_str(), true);
         String buttonname;
         buttonname.reserve(32);
@@ -2315,7 +2401,7 @@ void mqttConnect()
         mqttClient->publish((String(mqtt_info->mqttBaseTopic) + F("/button")).c_str(), buttonname.c_str(), true);
         mqttClient->loop();
         sendMQTT();
-        BWC_LOG_P(PSTR("MQTT > Sending HA discovery"),0);
+        BWC_LOG_P(PSTR("MQTT > Sending HA discovery"), 0);
         mqttClient->setBufferSize(1536);
         setupHA();
         mqttClient->setBufferSize(512);
@@ -2323,8 +2409,8 @@ void mqttConnect()
         // Serial.println(F("MQTT Sending config"));
         // sendMQTTConfig();    // Stack smashing if doing this here :-(
         send_mqtt_cfg_needed = true;
-        BWC_LOG_P(PSTR("MQTT > connect done\n"),0);
-        #endif
+        BWC_LOG_P(PSTR("MQTT > connect done\n"), 0);
+#endif
     }
     else
     {
@@ -2344,41 +2430,40 @@ time_t getBootTime()
 void handleESPInfo()
 {
     if (!webauth::requireAuth()) return;
-    #ifdef ESP8266
+#ifdef ESP8266
     char stack;
     uint32_t stacksize = stack_start - &stack;
     size_t const BUFSIZE = 1024;
     char response[BUFSIZE];
 
     char const *response_dram =
-    PSTR(
-    "Stack size:               %u \n"
-    "Free Dram Heap:           %u \n"
-    "Min Dram Heap:            %u \n"
-    "Max free Dram block size: %u \n\n");
+        PSTR(
+            "Stack size:               %u \n"
+            "Free Dram Heap:           %u \n"
+            "Min Dram Heap:            %u \n"
+            "Max free Dram block size: %u \n\n");
 
     char const *response_iram =
-    PSTR(
-    "Free Iram Heap:           %u \n"
-    "Max free Iram block size: %u \n\n"
-    "Core version:             %s \n"
-    "CPU fq:                   %u MHz\n"
-    "Cycle count:              %u \n"
-    "Free cont stack:          %u \n"
-    "Sketch size:              %u \n"
-    "Free sketch space:        %u \n"
-    );
+        PSTR(
+            "Free Iram Heap:           %u \n"
+            "Max free Iram block size: %u \n\n"
+            "Core version:             %s \n"
+            "CPU fq:                   %u MHz\n"
+            "Cycle count:              %u \n"
+            "Free cont stack:          %u \n"
+            "Sketch size:              %u \n"
+            "Free sketch space:        %u \n");
 
     server->setContentLength(CONTENT_LENGTH_UNKNOWN);
     server->send(200, F("text/plain"), "");
 
     snprintf_P(response, BUFSIZE, response_dram,
-        stacksize,
-        ESP.getFreeHeap(),
-        heap_water_mark,
-        ESP.getMaxFreeBlockSize() );
+               stacksize,
+               ESP.getFreeHeap(),
+               heap_water_mark,
+               ESP.getMaxFreeBlockSize());
     server->sendContent(response);
-    uint32_t iram_heap; 
+    uint32_t iram_heap;
     uint32_t iram_maxblock;
     {
         HeapSelectIram ephemeral;
@@ -2386,20 +2471,19 @@ void handleESPInfo()
         iram_maxblock = ESP.getMaxFreeBlockSize();
     }
     snprintf_P(response, BUFSIZE, response_iram,
-        iram_heap,
-        iram_maxblock,
-        ESP.getCoreVersion().c_str(),
-        ESP.getCpuFreqMHz(),
-        ESP.getCycleCount(),
-        ESP.getFreeContStack(),
-        ESP.getSketchSize(),
-        ESP.getFreeSketchSpace()
-    );
-    
+               iram_heap,
+               iram_maxblock,
+               ESP.getCoreVersion().c_str(),
+               ESP.getCpuFreqMHz(),
+               ESP.getCycleCount(),
+               ESP.getFreeContStack(),
+               ESP.getSketchSize(),
+               ESP.getFreeSketchSpace());
+
     server->sendContent(response);
     server->sendContent("");
 
-    #endif
+#endif
 }
 
 // /api/watchdog-status — runtime audit endpoint. Returns the current
@@ -2452,26 +2536,26 @@ void handleWatchdogStatus()
 
 void setTemperatureFromSensor()
 {
-    if(bwc->hasTempSensor)
-    { 
-            tempSensors->requestTemperatures(); 
-            float temperatureC = tempSensors->getTempCByIndex(0);
-            //float temperatureF = tempSensors.getTempFByIndex(0);
-            //Serial.print(temperatureC);
-            //Serial.println("ºC");
-            //Serial.print(temperatureF);
-            //Serial.println("ºF");
+    if (bwc->hasTempSensor)
+    {
+        tempSensors->requestTemperatures();
+        float temperatureC = tempSensors->getTempCByIndex(0);
+        // float temperatureF = tempSensors.getTempFByIndex(0);
+        // Serial.print(temperatureC);
+        // Serial.println("ºC");
+        // Serial.print(temperatureF);
+        // Serial.println("ºF");
 
-            // Ignore bad reads
-            if(temperatureC >= -20.0)
-            {
-                bwc->setAmbientTemperature(temperatureC, true);
-            }
+        // Ignore bad reads
+        if (temperatureC >= -20.0)
+        {
+            bwc->setAmbientTemperature(temperatureC, true);
+        }
     }
     BWC_YIELD;
 }
 
-extern "C" void custom_crash_callback(struct rst_info * rst_info, uint32_t stack, uint32_t stack_end )
+extern "C" void custom_crash_callback(struct rst_info *rst_info, uint32_t stack, uint32_t stack_end)
 {
     File file = LittleFS.open(F("crashlog.txt"), "a");
     String crashinfo;
@@ -2501,8 +2585,7 @@ extern "C" void custom_crash_callback(struct rst_info * rst_info, uint32_t stack
         "REASON_SOFT_WDT_RST",
         "REASON_SOFT_RESTART",
         "REASON_DEEP_SLEEP_AWAKE",
-        "REASON_EXT_SYS_RST"
-    };
+        "REASON_EXT_SYS_RST"};
 
     snprintf(tempstring, 64, "%d (%s)\n", rst_info->reason, reasons[rst_info->reason].c_str());
     crashinfo += F("Reason: ");
@@ -2534,14 +2617,14 @@ extern "C" void custom_crash_callback(struct rst_info * rst_info, uint32_t stack
 
     crashinfo += F("\nstack>>>>>>>>>>>>>");
 
-    for (uint32_t iAddress = stack; iAddress < stack_end; iAddress += sizeof(uint32_t*))
+    for (uint32_t iAddress = stack; iAddress < stack_end; iAddress += sizeof(uint32_t *))
     {
         char buf[16];
         snprintf(buf, 16, "\n%08x: ", iAddress);
         crashinfo += buf;
-        for(uint32_t i = 0; i < 4; i++)
+        for (uint32_t i = 0; i < 4; i++)
         {
-            uint32_t* pValue = (uint32_t*) iAddress;
+            uint32_t *pValue = (uint32_t *)iAddress;
             snprintf(buf, 16, "%08x ", *pValue);
             crashinfo += buf;
             crashinfo += ' ';

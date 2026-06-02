@@ -69,5 +69,41 @@ Technical details in the [Documentation](bwc_docs.xlsx).
 
 @misterpeee's wife made and shared this case for 3d printing https://github.com/visualapproach/WiFi-remote-for-Bestway-Lay-Z-SPA/discussions/265#discussion-4062382 but it's for the PCB_V1 which is deprecated. Latest PCB is PCB_V2B.
 
+#### Wireless updates (after the controller is sealed in)
+
+Once the NodeMCU is mounted inside the pump enclosure, USB access is gone — but
+both `firmware.bin` AND `littlefs.bin` (the web UI / config files) can be pushed
+over WiFi. ArduinoOTA listens on UDP/8266 with password `esp8266` (configurable
+via `OTA_PSWD_F` in `Code/src/config.h`).
+
+**From PlatformIO** (build host on the device's LAN):
+
+```sh
+# Firmware (~600 KB):
+pio run -t upload --upload-port layzspa.local --upload-flags --auth=esp8266
+# LittleFS image (~1 MB) — yes, this works too:
+pio run -t uploadfs --upload-port layzspa.local --upload-flags --auth=esp8266
+```
+
+**From any host with Python on the LAN** (no PlatformIO needed) — use the
+included wrapper:
+
+```sh
+tools/ota-update.sh -i 192.168.1.42 -f path/to/firmware.bin
+tools/ota-update.sh -i 192.168.1.42 -s -f path/to/littlefs.bin   # filesystem
+```
+
+The wrapper just shells out to `espota.py` (which ships with the
+`framework-arduinoespressif8266` package — check
+`~/.platformio/packages/framework-arduinoespressif8266/tools/espota.py` after
+your first PlatformIO build, or grab it from
+[esp8266/Arduino](https://github.com/esp8266/Arduino/blob/master/tools/espota.py)).
+It adds an `ESPOTA_INVITE_RETRIES` loop because on flaky links (cellular
+hotspots, distant mesh) the single-packet UDP INVITE drops occasionally — once
+auth completes, the TCP transfer is reliable.
+
+Saved settings (`wifi.json`, `mqtt.json`, `hwcfg.json`) are preserved across
+both flashes.
+
 #### Problems?
 Read the [FAQ](https://github.com/visualapproach/WiFi-remote-for-Bestway-Lay-Z-SPA/discussions/46), other [discussions](https://github.com/visualapproach/WiFi-remote-for-Bestway-Lay-Z-SPA/discussions) and current [issues](https://github.com/visualapproach/WiFi-remote-for-Bestway-Lay-Z-SPA/issues).

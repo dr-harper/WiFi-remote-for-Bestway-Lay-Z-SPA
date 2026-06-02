@@ -195,6 +195,57 @@
   </div>
 </section>
 
+<!-- ==================== RF tuning ====================
+     Runtime-tunable RF settings (upstream feat 074ee0c). Supersedes
+     the hardcoded WIFI_PHY_MODE_11G + sleep=NONE workaround in our
+     earlier WiFi work — these are now per-device editable. -->
+<section>
+  <div class="card">
+    <h2 data-i18n="section_rf_tuning">RF tuning</h2>
+    <p class="card-sub">
+      Defaults are tuned for maximum range. Save then reboot to apply.
+    </p>
+
+    <div class="row">
+      <span class="label">
+        <span data-i18n="label_tx_power">TX power (dBm)</span>
+        <span class="tooltip"
+              data-text="Transmit power, 0–20.5 dBm. Higher = more range, more current. Default 20.5 = max."
+              data-i18n="[data-text]tooltip_tx_power">?</span>
+      </span>
+      <input type="number" id="txPowerDbm" min="0" max="20.5" step="0.5" style="max-width:6rem;text-align:right">
+    </div>
+
+    <label class="toggle" style="justify-content:space-between;width:100%;padding:.5rem 0;border-bottom:1px solid var(--border-2)">
+      <span>
+        <span data-i18n="label_no_sleep">Disable modem sleep</span>
+        <span class="tooltip"
+              data-text="Checked = WiFi radio always on (snappier, +1 dB effective margin, ~+30 mA). Unchecked = standard modem sleep."
+              data-i18n="[data-text]tooltip_no_sleep">?</span>
+      </span>
+      <span style="display:inline-flex;align-items:center">
+        <input type="checkbox" id="noModemSleep">
+        <span class="sw"></span>
+      </span>
+    </label>
+
+    <div class="row">
+      <span class="label">
+        <span data-i18n="label_phy_mode">PHY mode</span>
+        <span class="tooltip"
+              data-text="Auto = let driver choose. 802.11b = most robust on weak signal (+5..+8 dB sensitivity, capped at 11 Mbps). 802.11g/n = faster, slightly worse edge."
+              data-i18n="[data-text]tooltip_phy_mode">?</span>
+      </span>
+      <select id="phyMode" style="max-width:14rem">
+        <option value="0">Auto (default)</option>
+        <option value="1">802.11b only (best range)</option>
+        <option value="2">802.11g</option>
+        <option value="3">802.11n</option>
+      </select>
+    </div>
+  </div>
+</section>
+
 <div class="action-bar">
   <button id="save" class="btn btn-primary" onclick="saveNetworkConfig()"
           data-i18n="button_save">Save</button>

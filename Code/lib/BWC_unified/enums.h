@@ -266,4 +266,11 @@ struct sWifi_info
     bool enableAp;
     bool enableWmApFallback;
     bool enableStaticIp4;
+    // RF tuning — adjustable from web UI without rebuild/reflash.
+    // Defaults tuned for max range. Both fields persist in wifi.json.
+    float txPowerDbm = 20.5f;       // 0..20.5 dBm; max wins for marginal links (+3 dB vs upstream default).
+    bool noModemSleep = true;       // true = WIFI_NONE_SLEEP, snappier + ~+1 dB effective.
+    int phyMode = 0;                // 0=auto, 1=802.11b, 2=11g, 3=11n.
+                                    // 11b is +5..+8 dB more sensitive on the edge but
+                                    // capped at 11 Mbps (irrelevant here).
 };

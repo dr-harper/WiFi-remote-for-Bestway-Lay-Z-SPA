@@ -26,6 +26,15 @@ function loadNetworkConfig() {
             document.getElementById('ip4NTP').value             = json.ip4NTP            || '';
 
             renderStatus(json.status);
+
+            // RF tuning (upstream feat 074ee0c). Defaults applied if missing
+            // from JSON (older firmware doesn't expose these fields).
+            const tx = document.getElementById('txPowerDbm');
+            const ms = document.getElementById('noModemSleep');
+            const ph = document.getElementById('phyMode');
+            if (tx) tx.value   = (json.txPowerDbm   !== undefined) ? json.txPowerDbm   : 20.5;
+            if (ms) ms.checked = (json.noModemSleep !== undefined) ? !!json.noModemSleep : true;
+            if (ph) ph.value   = (json.phyMode      !== undefined) ? json.phyMode      : 0;
         }
     }
 }
@@ -107,7 +116,11 @@ function saveNetworkConfig() {
         ip4Subnet:        document.getElementById('ip4Subnet').value,
         ip4DnsPrimary:    document.getElementById('ip4DnsPrimary').value,
         ip4DnsSecondary:  document.getElementById('ip4DnsSecondary').value,
-        ip4NTP:           document.getElementById('ip4NTP').value
+        ip4NTP:           document.getElementById('ip4NTP').value,
+        // RF tuning (upstream feat 074ee0c)
+        txPowerDbm:       parseFloat(document.getElementById('txPowerDbm').value),
+        noModemSleep:     document.getElementById('noModemSleep').checked,
+        phyMode:          parseInt(document.getElementById('phyMode').value, 10)
     };
 
     var req = new XMLHttpRequest();

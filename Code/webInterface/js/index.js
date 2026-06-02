@@ -58,56 +58,49 @@ updateBrtState = false
 connect()
 loadWebConfig();
 
-if (localStorage.getItem('showSectionTemperature'))
-{
-	setWebConfig();
+if (localStorage.getItem('showSectionTemperature')) {
+    setWebConfig();
 }
 
-function setWebConfig()
-{
-	document.getElementById('sectionTemperature').style.display = (localStorage.getItem('showSectionTemperature') !== 'false' ? 'block' : 'none');
-	document.getElementById('sectionDisplay').style.display = (localStorage.getItem('showSectionDisplay') !== 'false' ? 'block' : 'none');
-	document.getElementById('sectionControl').style.display = (localStorage.getItem('showSectionControl') !== 'false' ? 'block' : 'none');
-	document.getElementById('sectionButtons').style.display = (localStorage.getItem('showSectionButtons') !== 'false' ? 'block' : 'none');
-	document.getElementById('sectionTimer').style.display = (localStorage.getItem('showSectionTimer') !== 'false' ? 'block' : 'none');
-	document.getElementById('sectionTotals').style.display = (localStorage.getItem('showSectionTotals') !== 'false' ? 'block' : 'none');
-	document.getElementById('tableSlider').style.display = (localStorage.getItem('useControlSelector') !== 'false' ? 'none' : 'table');
-	document.getElementById('tableSelector').style.display = (localStorage.getItem('useControlSelector') !== 'false' ? 'table' : 'none');
+function setWebConfig() {
+    document.getElementById('sectionTemperature').style.display = (localStorage.getItem('showSectionTemperature') !== 'false' ? 'block' : 'none');
+    document.getElementById('sectionDisplay').style.display = (localStorage.getItem('showSectionDisplay') !== 'false' ? 'block' : 'none');
+    document.getElementById('sectionControl').style.display = (localStorage.getItem('showSectionControl') !== 'false' ? 'block' : 'none');
+    document.getElementById('sectionButtons').style.display = (localStorage.getItem('showSectionButtons') !== 'false' ? 'block' : 'none');
+    document.getElementById('sectionTimer').style.display = (localStorage.getItem('showSectionTimer') !== 'false' ? 'block' : 'none');
+    document.getElementById('sectionTotals').style.display = (localStorage.getItem('showSectionTotals') !== 'false' ? 'block' : 'none');
+    document.getElementById('tableSlider').style.display = (localStorage.getItem('useControlSelector') !== 'false' ? 'none' : 'table');
+    document.getElementById('tableSelector').style.display = (localStorage.getItem('useControlSelector') !== 'false' ? 'table' : 'none');
 }
 
-function loadWebConfig()
-{
-	const Http = new XMLHttpRequest();
-	const url = '/getwebconfig/';
-	Http.open('POST', url);
-	Http.send();
-	Http.onreadystatechange = function()
-	{
-		if (this.readyState == 4 && this.status == 200)
-		{
-			var json = JSON.parse(Http.responseText);
-			localStorage.setItem('showSectionTemperature', json.SST);
-			localStorage.setItem('showSectionDisplay', json.SSD);
-			localStorage.setItem('showSectionControl', json.SSC);
-			localStorage.setItem('showSectionButtons', json.SSB);
-			localStorage.setItem('showSectionTimer', json.SSTIM);
-			localStorage.setItem('showSectionTotals', json.SSTOT);
-			localStorage.setItem('useControlSelector', json.UCS);
-			setWebConfig();
-		}
-	}
+function loadWebConfig() {
+    const Http = new XMLHttpRequest();
+    const url = '/getwebconfig/';
+    Http.open('POST', url);
+    Http.send();
+    Http.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+            var json = JSON.parse(Http.responseText);
+            localStorage.setItem('showSectionTemperature', json.SST);
+            localStorage.setItem('showSectionDisplay', json.SSD);
+            localStorage.setItem('showSectionControl', json.SSC);
+            localStorage.setItem('showSectionButtons', json.SSB);
+            localStorage.setItem('showSectionTimer', json.SSTIM);
+            localStorage.setItem('showSectionTotals', json.SSTOT);
+            localStorage.setItem('useControlSelector', json.UCS);
+            setWebConfig();
+        }
+    }
 }
 
-function resetTotals()
-{
-	if (confirm('Do you really want to reset the totals?'))
-	{
-		buttonConfirm(document.getElementById('reset'));
-		sendCommand('resetTotals');
-	}
+function resetTotals() {
+    if (confirm('Do you really want to reset the totals?')) {
+        buttonConfirm(document.getElementById('reset'));
+        sendCommand('resetTotals');
+    }
 }
 function connect() {
-    connection = new WebSocket("ws://" + location.hostname + ":81/", ["arduino"])
+    connection = new WebSocket("ws://" + location.hostname + ":8080/", ["arduino"])
 
     connection.onopen = function () {
         document.body.classList.add("connected")

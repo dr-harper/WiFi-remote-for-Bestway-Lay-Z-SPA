@@ -111,10 +111,12 @@
              <span data-i18n="option_pcb_v2">V2</span></label>
       <label><input type="radio" id="v2b" name="pcb" value="v2b">
              <span data-i18n="option_pcb_v2b">V2B</span>
-             <span data-i18n="[data-text]tooltip_pcb_v2b_info" class="tooltip">?</span></label>
+             <span data-i18n="[data-text]tooltip_pcb_v2b_info" class="tooltip"
+                   data-text="Same as PCB V2, but with wires moved to other pins for better compatibility with certain pumps">?</span></label>
       <label><input type="radio" id="custom" name="pcb" value="custom">
              <span data-i18n="option_pcb_custom">Custom</span>
-             <span data-i18n="[data-text]tooltip_pcb_custom_info" class="tooltip">?</span></label>
+             <span data-i18n="[data-text]tooltip_pcb_custom_info" class="tooltip"
+                   data-text="If you're using your own board, fill out the pinout below! Leave fields blank if not used.">?</span></label>
     </div>
   </div>
 </section>
@@ -124,7 +126,8 @@
   <div class="card">
     <h2>
       <span data-i18n="label_pinout">Pinout</span>
-      <span data-i18n="[data-text]tooltip_pinout_info" class="tooltip">?</span>
+      <span data-i18n="[data-text]tooltip_pinout_info" class="tooltip"
+            data-text="D0–D8 as labeled on the ESP, but without the 'D'. The ESP converts to GPIO numbers.">?</span>
     </h2>
     <div class="pin-grid">
       <span class="label" data-i18n="th_cio">CIO</span>
@@ -149,7 +152,8 @@
   <div class="card">
     <h2>
       <span data-i18n="label_ambient_sensor">Ambient temperature sensor</span>
-      <span data-i18n="[data-text]tooltip_ambient_sensor_info" class="tooltip">?</span>
+      <span data-i18n="[data-text]tooltip_ambient_sensor_info" class="tooltip"
+            data-text='Requires a DS18B20 sensor connected to the specified "Sensor Pin." The sensor periodically updates the "Ambient Temperature."'>?</span>
     </h2>
     <p class="card-sub">Optional one-wire DS18B20 for ambient temperature.</p>
     <label class="toggle" style="justify-content:space-between;width:100%;margin-bottom:.5rem">
@@ -160,7 +164,7 @@
       </span>
     </label>
     <div class="row">
-      <span class="label" data-i18n="label_sensor_pin">Sensor pin</span>
+      <span class="label" data-i18n="label_sensor_pin">Sensor pin (Dx)</span>
       <input type="text" id="pin8" maxlength="2" style="width:4rem;text-align:center">
     </div>
   </div>
@@ -171,7 +175,8 @@
   <div class="card">
     <h2>
       <span data-i18n="label_power_levels">Power levels (Watts)</span>
-      <span data-i18n="[data-text]tooltip_power_levels_info" class="tooltip">?</span>
+      <span data-i18n="[data-text]tooltip_power_levels_info" class="tooltip"
+            data-text="Adjusts the power levels for different operating modes.">?</span>
     </h2>
     <label class="toggle" style="justify-content:space-between;width:100%;margin-bottom:.5rem">
       <span data-i18n="label_override">Override defaults</span>
