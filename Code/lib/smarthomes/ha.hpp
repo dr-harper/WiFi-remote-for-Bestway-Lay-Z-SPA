@@ -172,9 +172,14 @@ void setupHA()
     #elif defined(ESP32)
     String mychipid = String((unsigned int)ESP.getChipModel());
     #endif
-    int maxtemp, mintemp;
-    maxtemp = 104;
-    mintemp = 68;
+    // HA climate min/max in the unit set by mqtt_info->haTempUnit.
+    // Lay-Z-Spa range: 20–40 °C / 68–104 °F. Default is "C" for UK
+    // installs; user can flip via the MQTT settings tab. We re-publish
+    // discovery on every MQTT reconnect, so a change picks up after
+    // saving + the auto-reconnect handleSetMqtt triggers.
+    bool haUseCelsius = (mqtt_info->haTempUnit != "F");
+    int maxtemp = haUseCelsius ? 40  : 104;
+    int mintemp = haUseCelsius ? 20  : 68;
     DynamicJsonDocument devicedoc(512);
     devicedoc[_dev][_conf_url] = F("http://") + WiFi.localIP().toString();
     devicedoc[(_dev)][(_connections)].add(serialized("[\"mac\",\"" + WiFi.macAddress()+"\"]" ));
@@ -1747,7 +1752,7 @@ void setupHA()
     doc[_max_temp] = maxtemp;
     doc[_min_temp] = mintemp;
     doc[_precision] = 1.0;
-    doc[_temp_unit] = "F";
+    doc[_temp_unit] = haUseCelsius ? "C" : "F";
     doc[_modes].add(serialized("\"fan_only\", \"off\", \"heat\""));
     doc[_mode_cmd_t] = mqtt_info->mqttBaseTopic+F("/command_batch");
     doc[_mode_cmd_tpl] = F("[{CMD:3,VALUE:{%if value == \"heat\" %}1{% else %}0{% endif %},XTIME:0,INTERVAL:0},{CMD:4,VALUE:{%if value == \"fan_only\" %}1{% elif value == \"heat\" %}1{% else %}0{% endif %},XTIME:0,INTERVAL:0}]");
@@ -1756,9 +1761,9 @@ void setupHA()
     doc[_act_t] = mqtt_info->mqttBaseTopic+F("/message");
     doc[_act_tpl] = F("{% if value_json.RED == 1 %}heating{% elif value_json.GRN == 1 %}idle{% elif value_json.FLT == 1 %}fan{% else %}off{% endif %}");
     doc[_temp_stat_t] = mqtt_info->mqttBaseTopic+F("/message");
-    doc[_temp_stat_tpl] = F("{{ value_json.TGTF }}");
+    doc[_temp_stat_tpl] = haUseCelsius ? F("{{ value_json.TGTC }}") : F("{{ value_json.TGTF }}");
     doc[_curr_temp_t] = mqtt_info->mqttBaseTopic+F("/message");
-    doc[_curr_temp_tpl] = F("{{ value_json.TMPF }}");
+    doc[_curr_temp_tpl] = haUseCelsius ? F("{{ value_json.TMPC }}") : F("{{ value_json.TMPF }}");
     doc[_temp_cmd_t] = mqtt_info->mqttBaseTopic+F("/command");
     doc[_temp_cmd_tpl] = F("{CMD:0,VALUE:{{ value|int }},XTIME:0,INTERVAL:0}");
     doc[(_avty_t)] = mqtt_info->mqttBaseTopic+F("/Status");

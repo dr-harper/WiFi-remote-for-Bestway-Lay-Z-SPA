@@ -5,99 +5,146 @@
 {% endblock %}
 
 {% block top_navigation %}
-{% run use_component("topNavigation", "mqtt") %}
+{% run use_component("topNavigation", "settings") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "settings") %}
 {% endblock %}
 
 {% block content %}
 
+
+<a class="back-link" href="/config.html">‹ Settings</a>
+
 <section>
-	<table>
-		<tr>
-			<td><label for="enableMqtt" data-i18n="label_enable_mqtt">Enable MQTT:</label></td>
-			<td><input type="checkbox" id="enableMqtt"></td>
-		</tr>
-		<tr>
-			<td><label for="mqttHost" data-i18n="label_mqtt_host">MQTT host addr:</label></td>
-			<td>
-				<input type="text" id="mqttHost" maxlength="63" value="IP or FQDN of the broker">
-			</td>
-		</tr>
-		<tr>
-			<td><label for="mqttPort" data-i18n="label_port">Port:</label></td>
-			<td><input type="text" id="mqttPort" maxlength="31"></td>
-		</tr>
-		<tr>
-			<td><label for="mqttUsername" data-i18n="label_username">Username:</label></td>
-			<td><input type="text" id="mqttUsername" maxlength="31"></td>
-		</tr>
-		<tr>
-			<td><label for="mqttPassword" data-i18n="label_password">Password:</label></td>
-			<td><input type="text" id="mqttPassword" maxlength="31"></td>
-		</tr>
-		<tr>
-			<td><label for="mqttClientId" data-i18n="label_client_id">Client ID:</label></td>
-			<td><input type="text" id="mqttClientId" maxlength="31"></td>
-		</tr>
-		<tr>
-			<td><label for="mqttBaseTopic" data-i18n="label_base_topic">Base Topic:</label></td>
-			<td><input type="text" id="mqttBaseTopic" maxlength="31"></td>
-		</tr>
-		<tr>
-			<td><label for="mqttTelemetryInterval" data-i18n="label_telemetry_interval">Telemetry Interval
-					(s):</label></td>
-			<td><input type="text" id="mqttTelemetryInterval"></td>
-		</tr>
-	</table>
+    <div class="card">
+        <h2 data-i18n="section_mqtt_broker">Broker</h2>
+        <p class="card-sub">Connect the spa to an MQTT broker for Home Assistant / Node-RED / Prometheus integration.</p>
+
+        <label class="toggle" style="justify-content:space-between;width:100%;margin-bottom:.75rem">
+            <span data-i18n="label_enable_mqtt">Enable MQTT</span>
+            <span style="display:inline-flex;align-items:center">
+                <input type="checkbox" id="enableMqtt">
+                <span class="sw"></span>
+            </span>
+        </label>
+
+        <div style="margin-bottom:.6rem">
+            <label for="mqttHost" data-i18n="label_mqtt_host">Host address</label>
+            <input type="text" id="mqttHost" maxlength="63" placeholder="IP or FQDN of the broker">
+        </div>
+
+        <div class="row" style="grid-template-columns:1fr 1fr;gap:.6rem">
+            <div>
+                <label for="mqttPort" data-i18n="label_port">Port</label>
+                <input type="text" id="mqttPort" maxlength="31" placeholder="1883">
+            </div>
+            <div>
+                <label for="mqttTelemetryInterval" data-i18n="label_telemetry_interval">Telemetry (s)</label>
+                <input type="text" id="mqttTelemetryInterval" placeholder="60">
+            </div>
+        </div>
+    </div>
 </section>
-{% endblock %}
 
-{% block footer %}
-<button id="save" class="button" onclick="saveMqttConfig()" data-i18n="button_save">save</button>
+<section>
+    <div class="card">
+        <h2 data-i18n="section_mqtt_auth">Authentication</h2>
+        <div style="margin-bottom:.6rem">
+            <label for="mqttUsername" data-i18n="label_username">Username</label>
+            <input type="text" id="mqttUsername" maxlength="31" autocomplete="off">
+        </div>
+        <div>
+            <label for="mqttPassword" data-i18n="label_password">Password</label>
+            <input type="password" id="mqttPassword" maxlength="31" autocomplete="new-password">
+        </div>
+    </div>
+</section>
 
+<section>
+    <div class="card">
+        <h2 data-i18n="section_mqtt_topic">Topic + identity</h2>
+        <div style="margin-bottom:.6rem">
+            <label for="mqttClientId" data-i18n="label_client_id">Client ID</label>
+            <input type="text" id="mqttClientId" maxlength="31" placeholder="layzspa">
+        </div>
+        <div>
+            <label for="mqttBaseTopic" data-i18n="label_base_topic">Base topic</label>
+            <input type="text" id="mqttBaseTopic" maxlength="31" placeholder="layzspa">
+        </div>
+    </div>
+</section>
+
+<!-- Home Assistant discovery — the spa publishes ~70 entity-config
+     payloads on every MQTT reconnect. This section governs the climate
+     entity's unit; min/max + template fields swap accordingly. -->
+<section>
+    <div class="card">
+        <h2 data-i18n="section_ha">Home Assistant</h2>
+        <p class="card-sub">
+            Climate-entity temperature unit. Discovery re-publishes when you Save, so the change
+            takes effect in HA on the next MQTT reconnect — usually within a few seconds.
+        </p>
+        <div>
+            <label for="haTempUnit" data-i18n="label_ha_temp_unit">Temperature unit</label>
+            <select id="haTempUnit" style="width:100%">
+                <option value="C">Celsius (°C, range 20–40)</option>
+                <option value="F">Fahrenheit (°F, range 68–104)</option>
+            </select>
+        </div>
+    </div>
+</section>
+
+<div class="action-bar">
+    <button id="save" class="btn btn-primary" onclick="saveMqttConfig()"
+            data-i18n="button_save">Save</button>
+</div>
 {% endblock %}
 
 {% block embed_scripts %}
 <script>
-	loadMqttConfig()
+    loadMqttConfig()
 
-	function loadMqttConfig() {
-		var req = new XMLHttpRequest()
-		req.open('POST', '/getmqtt/')
-		req.send()
-		req.onreadystatechange = function () {
-			if (this.readyState == 4 && this.status == 200) {
-				var json = JSON.parse(req.responseText)
-				document.getElementById('enableMqtt').checked = json.enableMqtt
-				document.getElementById('mqttHost').value = json.mqttHost
-				document.getElementById('mqttPort').value = json.mqttPort
-				document.getElementById('mqttUsername').value = json.mqttUsername
-				document.getElementById('mqttPassword').value = json.mqttPassword
-				document.getElementById('mqttClientId').value = json.mqttClientId
-				document.getElementById('mqttBaseTopic').value = json.mqttBaseTopic
-				document.getElementById('mqttTelemetryInterval').value = json.mqttTelemetryInterval
-			}
-		}
-	}
+    function loadMqttConfig() {
+        var req = new XMLHttpRequest()
+        req.open('POST', '/getmqtt/')
+        req.send()
+        req.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                var json = JSON.parse(req.responseText)
+                document.getElementById('enableMqtt').checked        = json.enableMqtt
+                document.getElementById('mqttHost').value            = json.mqttHost
+                document.getElementById('mqttPort').value            = json.mqttPort
+                document.getElementById('mqttUsername').value        = json.mqttUsername
+                document.getElementById('mqttPassword').value        = json.mqttPassword
+                document.getElementById('mqttClientId').value        = json.mqttClientId
+                document.getElementById('mqttBaseTopic').value       = json.mqttBaseTopic
+                document.getElementById('mqttTelemetryInterval').value = json.mqttTelemetryInterval
+                // haTempUnit may be missing on older firmware — default to 'C'
+                document.getElementById('haTempUnit').value          = (json.haTempUnit === 'F') ? 'F' : 'C'
+            }
+        }
+    }
 
-	function saveMqttConfig() {
-		if (!validatePassword('mqttPassword')) return
-
-		buttonConfirm(document.getElementById('save'))
-
-		var req = new XMLHttpRequest()
-		req.open('POST', '/setmqtt/')
-		var json = {
-			'enableMqtt': (document.getElementById('enableMqtt').checked),
-			'mqttHost': (document.getElementById('mqttHost').value),
-			'mqttPort': parseInt(document.getElementById('mqttPort').value),
-			'mqttUsername': (document.getElementById('mqttUsername').value),
-			'mqttPassword': (document.getElementById('mqttPassword').value),
-			'mqttClientId': (document.getElementById('mqttClientId').value),
-			'mqttBaseTopic': (document.getElementById('mqttBaseTopic').value),
-			'mqttTelemetryInterval': (document.getElementById('mqttTelemetryInterval').value)
-		}
-		req.send(JSON.stringify(json))
-		document.getElementById('mqttPassword').value = '<enter password>'
-	}
+    function saveMqttConfig() {
+        if (!validatePassword('mqttPassword')) return
+        buttonConfirm(document.getElementById('save'))
+        var req = new XMLHttpRequest()
+        req.open('POST', '/setmqtt/')
+        var json = {
+            'enableMqtt':            document.getElementById('enableMqtt').checked,
+            'mqttHost':              document.getElementById('mqttHost').value,
+            'mqttPort':              parseInt(document.getElementById('mqttPort').value),
+            'mqttUsername':          document.getElementById('mqttUsername').value,
+            'mqttPassword':          document.getElementById('mqttPassword').value,
+            'mqttClientId':          document.getElementById('mqttClientId').value,
+            'mqttBaseTopic':         document.getElementById('mqttBaseTopic').value,
+            'mqttTelemetryInterval': document.getElementById('mqttTelemetryInterval').value,
+            'haTempUnit':            document.getElementById('haTempUnit').value
+        }
+        req.send(JSON.stringify(json))
+        document.getElementById('mqttPassword').value = '<enter password>'
+    }
 </script>
 {% endblock %}
