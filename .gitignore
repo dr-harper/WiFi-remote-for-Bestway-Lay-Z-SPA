@@ -37,3 +37,11 @@ Code/.vscode/extensions.json
 
 ## filesystem
 Code/data/
+# Dev tooling (scripts/dev-flash + scripts/dev-push) — local-only state
+dev-config.json
+Code/data_base/wifi.json
+Code/data_base/auth.json
+.spa-cookies
+
+# Python build cache
+__pycache__/
