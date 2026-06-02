@@ -1,0 +1,218 @@
+{% extends "../layout.html" %}
+
+{% block header_headline_title %}
+<span data-i18n="title_schedules">Schedules</span>
+{% endblock %}
+
+{% block top_navigation %}
+{% run use_component("topNavigation", "schedules") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "schedules") %}
+{% endblock %}
+
+{% block content %}
+
+<!-- ==================== Heating window ==================== -->
+<!-- Off-peak heating: heater ON between start and end, OFF outside.
+     Implemented as two recurring commands in the spa's command queue
+     (the existing /addcommand/ endpoint) with INTERVAL=86400 (daily).
+     This page is a friendlier UI on top of that primitive. -->
+<section>
+  <div class="card">
+    <h2 data-i18n="section_heating_window">Heating window</h2>
+    <p class="card-sub">
+      Heater turns on at the start time and off at the end time, every day.
+      Useful for off-peak electricity windows — set this to your cheap-rate hours.
+    </p>
+
+    <label class="toggle" style="justify-content:space-between;width:100%;margin-bottom:1rem">
+      <span data-i18n="label_enable_heating_window">Enable heating window</span>
+      <span style="display:inline-flex;align-items:center">
+        <input type="checkbox" id="schedEnabled">
+        <span class="sw"></span>
+      </span>
+    </label>
+
+    <div class="row">
+      <label class="label" for="schedStart" data-i18n="label_start_time">Start</label>
+      <input type="time" id="schedStart" value="00:30" step="60" style="max-width:8rem">
+    </div>
+    <div class="row">
+      <label class="label" for="schedEnd" data-i18n="label_end_time">End</label>
+      <input type="time" id="schedEnd" value="04:30" step="60" style="max-width:8rem">
+    </div>
+
+    <p style="margin-top:1rem;font-size:.85rem;color:var(--text-3)">
+      <strong>How this works:</strong> the spa queues two daily commands —
+      <code>set heat ON</code> at start and <code>set heat OFF</code> at end. Existing
+      commands are cleared and rewritten on Save. For finer control (multiple windows,
+      specific days), use the manual command queue in
+      <a href="/config.html">Settings → Spa</a>.
+    </p>
+  </div>
+</section>
+
+<!-- ==================== Active commands preview ==================== -->
+<section>
+  <div class="card">
+    <h2 data-i18n="section_scheduled">Currently scheduled</h2>
+    <p class="card-sub">Live view of the command queue.</p>
+    <table id="cmdq" style="width:100%"></table>
+    <p id="cmdqEmpty" style="font-size:.85rem;color:var(--text-3);display:none">
+      No scheduled commands. Enable the heating window above to add one.
+    </p>
+  </div>
+</section>
+
+<!-- Save action bar (sticky bottom) -->
+<div class="action-bar">
+  <button id="save" class="btn btn-primary" onclick="saveSchedule()"
+          data-i18n="button_save">Save schedule</button>
+</div>
+{% endblock %}
+
+{% block embed_scripts %}
+<script>
+  // Command IDs from the firmware (must match constants in config.html).
+  // We use the same /addcommand/ + /getcommands/ + /delcommand/ endpoints.
+  const CMD_SET_HEAT = 3;
+  const DAY_SECONDS = 86400;
+
+  // Parse "HH:MM" → seconds-since-midnight (in local time, then converted
+  // to UTC for the device — the firmware stores XTIME as a unix epoch
+  // and runs commands when local time matches XTIME's HH:MM modulo a day).
+  function timeToTodayEpoch(hhmm) {
+    const [h, m] = hhmm.split(':').map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return Math.floor(d.getTime() / 1000);
+  }
+
+  function loadSchedule() {
+    // Pull the existing command queue. If we find a daily heat-on +
+    // heat-off pair, restore the toggle + times. Otherwise default.
+    const req = new XMLHttpRequest();
+    req.open('POST', '/getcommands/');
+    req.send();
+    req.onreadystatechange = function() {
+      if (this.readyState !== 4 || this.status !== 200) return;
+      let j;
+      try { j = JSON.parse(req.responseText); } catch (e) { return; }
+      renderQueue(j);
+
+      // Look for heat-toggle commands w/ daily interval
+      let onCmd = null, offCmd = null;
+      for (let i = 0; i < j.LEN; i++) {
+        if (j.CMD[i] !== CMD_SET_HEAT || j.INTERVAL[i] !== DAY_SECONDS) continue;
+        if (j.VALUE[i] === 1) onCmd = j.XTIME[i];
+        if (j.VALUE[i] === 0) offCmd = j.XTIME[i];
+      }
+      if (onCmd && offCmd) {
+        document.getElementById('schedEnabled').checked = true;
+        document.getElementById('schedStart').value = epochToHHMM(onCmd);
+        document.getElementById('schedEnd').value   = epochToHHMM(offCmd);
+      }
+    };
+  }
+
+  function epochToHHMM(ts) {
+    const d = new Date(ts * 1000);
+    return d.toTimeString().substring(0, 5);
+  }
+
+  function renderQueue(j) {
+    const tbl = document.getElementById('cmdq');
+    const empty = document.getElementById('cmdqEmpty');
+    tbl.innerHTML = '';
+    if (j.LEN === 0) { empty.style.display = ''; return; }
+    empty.style.display = 'none';
+    const names = ['Set target','Set unit','Set bubbles','Set heat','Set pump',
+                   'Reset queue','Reboot','Internal','Reset times','Reset Cl','Reset replace filter',
+                   'Set jets','Set brightness','Beep','Set ambient °F','Set ambient °C',
+                   'Reset daily','Take control','Full power','Print','Set ready','Set R',
+                   'Reset rinse','Reset clean','Set power'];
+    for (let i = 0; i < j.LEN; i++) {
+      const date = new Date(j.XTIME[i] * 1000);
+      const isDaily = j.INTERVAL[i] === DAY_SECONDS;
+      const tr = tbl.insertRow();
+      tr.style.borderBottom = '1px solid var(--border-2)';
+      const c1 = tr.insertCell(0); c1.style.padding = '.4rem 0';
+      c1.innerHTML = '<span class="value">' + (names[j.CMD[i]] || '?') +
+                     ': <strong>' + j.VALUE[i] + '</strong></span>' +
+                     '<br><span style="color:var(--text-3);font-size:.78rem">' +
+                     date.toLocaleString() +
+                     (isDaily ? ' · daily' : ' · once') + '</span>';
+    }
+  }
+
+  function saveSchedule() {
+    const enabled = document.getElementById('schedEnabled').checked;
+    const startTime = document.getElementById('schedStart').value;
+    const endTime   = document.getElementById('schedEnd').value;
+    const btn = document.getElementById('save');
+
+    // First, clear any existing daily heat commands so we don't double-up.
+    // Then if enabled, add the new pair.
+    clearExistingHeatCommands(function() {
+      if (!enabled) {
+        buttonConfirm(btn, 'saved ✓', 3);
+        setTimeout(loadSchedule, 500);
+        return;
+      }
+      const onEpoch  = timeToTodayEpoch(startTime);
+      const offEpoch = timeToTodayEpoch(endTime);
+      addCommand(CMD_SET_HEAT, 1, onEpoch,  DAY_SECONDS, function() {
+        addCommand(CMD_SET_HEAT, 0, offEpoch, DAY_SECONDS, function() {
+          buttonConfirm(btn, 'saved ✓', 3);
+          setTimeout(loadSchedule, 500);
+        });
+      });
+    });
+  }
+
+  function clearExistingHeatCommands(done) {
+    // Fetch current queue, find daily-heat commands, delete them.
+    const req = new XMLHttpRequest();
+    req.open('POST', '/getcommands/');
+    req.send();
+    req.onreadystatechange = function() {
+      if (this.readyState !== 4 || this.status !== 200) { done(); return; }
+      const j = JSON.parse(req.responseText);
+      // Indices that match our heat-window pattern
+      const toDelete = [];
+      for (let i = 0; i < j.LEN; i++) {
+        if (j.CMD[i] === CMD_SET_HEAT && j.INTERVAL[i] === DAY_SECONDS) {
+          toDelete.push(i);
+        }
+      }
+      // Delete from highest index down so earlier indices don't shift
+      toDelete.sort((a,b) => b - a);
+      function nextDelete() {
+        if (toDelete.length === 0) { done(); return; }
+        const idx = toDelete.shift();
+        const r = new XMLHttpRequest();
+        r.open('POST', '/delcommand/');
+        r.send(JSON.stringify({ IDX: idx }));
+        r.onreadystatechange = function() {
+          if (r.readyState === 4) nextDelete();
+        };
+      }
+      nextDelete();
+    };
+  }
+
+  function addCommand(cmd, value, xtime, interval, done) {
+    const r = new XMLHttpRequest();
+    r.open('POST', '/addcommand/');
+    r.send(JSON.stringify({ CMD: cmd, VALUE: value, XTIME: xtime, INTERVAL: interval, TXT: 'heating-window' }));
+    r.onreadystatechange = function() {
+      if (r.readyState === 4) done();
+    };
+  }
+
+  loadSchedule();
+  setInterval(loadSchedule, 10000);   // refresh the live queue view every 10 s
+</script>
+{% endblock %}

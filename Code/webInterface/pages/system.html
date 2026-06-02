@@ -1,0 +1,178 @@
+{% extends "../layout.html" %}
+
+{% block header_headline_title %}
+<span data-i18n="title_system">System</span>
+{% endblock %}
+
+{% block top_navigation %}
+{% run use_component("topNavigation", "settings") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "settings") %}
+{% endblock %}
+
+{% block content %}
+
+
+<a class="back-link" href="/config.html">‹ Settings</a>
+
+<!-- ==================== Logs ==================== -->
+<!-- In-memory ring buffer from /logs/. Hardware-isolated USB serial on
+     this adapter means this is THE debug channel. Polled every 2 s. -->
+<section>
+  <div class="card">
+    <h2 data-i18n="section_logs">Device logs</h2>
+    <p class="card-sub">In-memory ring buffer (100 lines, oldest dropped). Substitutes for USB serial which is hardware-cut on this adapter.</p>
+
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:.5rem">
+      <button class="btn btn-primary" id="refreshBtn" onclick="refreshLogs()">Refresh</button>
+      <label class="toggle" style="margin:0">
+        <input type="checkbox" id="autoRefresh" checked><span class="sw"></span>
+        <span style="margin-left:.4rem;font-size:.85rem">auto-refresh</span>
+      </label>
+      <button class="btn" onclick="copyLogs()">Copy all</button>
+      <span id="copyStatus" style="font-size:.8rem;color:var(--good)"></span>
+      <span id="logCount" style="margin-left:auto;color:var(--text-3);font-size:.8rem">—</span>
+    </div>
+    <pre id="logPre" style="background:#0f1d2c;color:#c9d6e2;font-family:var(--font-mono);
+        font-size:.78rem;line-height:1.4;padding:.85rem;border-radius:8px;
+        overflow-x:auto;white-space:pre;max-height:50vh;min-height:8rem;margin:0">loading…</pre>
+  </div>
+</section>
+
+<!-- ==================== File operations ==================== -->
+<section>
+  <div class="card">
+    <h2 data-i18n="section_files">Files</h2>
+    <p class="card-sub">Upload to / remove from / browse the LittleFS partition.</p>
+
+    <h3 style="margin-top:.75rem;color:var(--text)">Upload</h3>
+    <form method="post" enctype="multipart/form-data" action="/upload.html"
+          style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem">
+      <label class="btn" for="uploadFile" style="cursor:pointer;justify-content:center"
+             data-i18n="btn_browse">Choose file…</label>
+      <input type="file" id="uploadFile" name="file" style="position:absolute;left:-9999px"
+             accept=".txt,.gz,.html,.ico,.js,.css,.mel,.png,.json">
+      <button type="submit" class="btn btn-primary" data-i18n="btn_upload">Upload</button>
+    </form>
+
+    <h3 style="color:var(--text)">Remove</h3>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;margin-bottom:1rem">
+      <input type="text" id="fileToRemove" placeholder="filename to delete">
+      <button class="btn btn-danger" onclick="removeFile()" data-i18n="btn_remove">Remove</button>
+    </div>
+
+    <h3 style="color:var(--text)">Browse</h3>
+    <p style="margin:0">
+      <a class="btn" href="/dir/" data-i18n="link_browse_files">Open LittleFS browser →</a>
+    </p>
+  </div>
+</section>
+
+<!-- ==================== Direct links ==================== -->
+<section>
+  <div class="card">
+    <h2 data-i18n="section_diag_links">Diagnostic endpoints</h2>
+    <p class="card-sub">Direct backend routes — use with care.</p>
+    <div class="row">
+      <a href="/info/" class="mono">/info/</a>
+      <span class="value muted">Heap / FW / WiFi diagnostics</span>
+    </div>
+    <div class="row">
+      <a href="/inputs/" class="mono">/inputs/</a>
+      <span class="value muted">Edge counting on pins (debug feature)</span>
+    </div>
+    <div class="row">
+      <a href="/hwtest/" class="mono">/hwtest/</a>
+      <span class="value muted">
+        <a href="hwtestinfo.html">Read instructions</a> before running
+      </span>
+    </div>
+    <div class="row">
+      <a href="/debug-on/" class="mono">/debug-on/</a>
+      <span class="value muted">Enable debug log output</span>
+    </div>
+    <div class="row">
+      <a href="/debug-off/" class="mono">/debug-off/</a>
+      <span class="value muted">Disable debug log output</span>
+    </div>
+    <div class="row">
+      <a href="/resetwifi/" class="mono" style="color:var(--bad)">/resetwifi/</a>
+      <span class="value" style="color:var(--bad)">Wipes WiFi credentials</span>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block embed_scripts_default %}
+{% run embed_scripts('function', 'i18n', 'darkmode', 'remove') %}
+{% endblock %}
+
+{% block embed_scripts %}
+<script>
+  let autoTimer = null;
+
+  function refreshLogs() {
+    const req = new XMLHttpRequest();
+    req.open('GET', '/logs/');
+    req.timeout = 5000;
+    req.onreadystatechange = function() {
+      if (this.readyState !== 4) return;
+      const pre = document.getElementById('logPre');
+      if (this.status !== 200) {
+        pre.textContent = 'HTTP ' + this.status + ' — ' + (this.responseText || 'fetch failed');
+        return;
+      }
+      const scrolledToBottom = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40;
+      pre.textContent = this.responseText;
+      if (scrolledToBottom) pre.scrollTop = pre.scrollHeight;
+      const lines = (this.responseText.match(/\n/g) || []).length;
+      document.getElementById('logCount').textContent = lines + ' lines';
+    };
+    req.send();
+  }
+
+  function copyLogs() {
+    const pre = document.getElementById('logPre');
+    const status = document.getElementById('copyStatus');
+    const text = pre.textContent;
+    function done(msg) { status.textContent = msg; setTimeout(() => status.textContent = '', 3000); }
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => done('copied ✓')).catch(() => fallback());
+      return;
+    }
+    fallback();
+    function fallback() {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:0;top:0;opacity:0';
+      ta.setAttribute('readonly', '');
+      document.body.appendChild(ta);
+      ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      if (ok) { done('copied ✓'); return; }
+      const r = document.createRange(); r.selectNodeContents(pre);
+      const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      done('selected — press ⌘C / Ctrl+C');
+    }
+  }
+
+  function setupAutoRefresh() {
+    const cb = document.getElementById('autoRefresh');
+    function apply() {
+      if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+      if (cb.checked) autoTimer = setInterval(refreshLogs, 2000);
+    }
+    cb.addEventListener('change', apply);
+    apply();
+  }
+
+  refreshLogs();
+  setupAutoRefresh();
+</script>
+{% endblock %}

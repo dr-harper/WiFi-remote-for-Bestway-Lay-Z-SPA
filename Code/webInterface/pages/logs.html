@@ -1,0 +1,174 @@
+{% extends "../layout.html" %}
+
+{% block header_headline_title %}
+<span data-i18n="title_logs">Device Logs</span>
+{% endblock %}
+
+{% block top_navigation %}
+{% run use_component("topNavigation", "settings") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "settings") %}
+{% endblock %}
+
+{% block content %}
+<style>
+  #logPre {
+    background: #0f1d2c;
+    color: #c9d6e2;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .82rem;
+    line-height: 1.4;
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    white-space: pre;
+    max-height: 70vh;
+    min-height: 20vh;
+  }
+  #logControls {
+    display: flex; flex-wrap: wrap; gap: .5rem;
+    margin-bottom: .75rem; align-items: center;
+  }
+  #logControls button {
+    padding: .45rem .8rem;
+    border: 1px solid #c0cad6;
+    background: #fff;
+    color: #0f4677;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: .85rem;
+  }
+  #logControls button.primary {
+    background: #0f4677; color: #fff; border-color: #0f4677;
+  }
+  #logControls label { font-size: .85rem; color: #4a5d72; }
+  #logCount { color: #93a5b8; font-size: .8rem; margin-left: auto; }
+</style>
+
+<section>
+  <h2 data-i18n="section_logs">Device logs:</h2>
+  <p style="font-size:.85rem;color:#4a5d72;margin-top:0">
+    In-memory ring buffer of recent events (boot, WiFi, errors).
+    100 lines max — oldest get dropped as new ones arrive.
+    USB serial isn't wired on this adapter, so this is the debug channel.
+  </p>
+  <div id="logControls">
+    <button type="button" class="primary" id="refreshBtn" onclick="refreshLogs()">Refresh now</button>
+    <label><input type="checkbox" id="autoRefresh" checked> auto-refresh (2s)</label>
+    <button type="button" id="copyBtn" onclick="copyLogs()">Copy all</button>
+    <span id="copyStatus" style="font-size:.8rem;color:#16a34a"></span>
+    <span id="logCount">—</span>
+  </div>
+  <pre id="logPre">loading…</pre>
+</section>
+
+<script>
+let autoTimer = null;
+
+function refreshLogs() {
+  const req = new XMLHttpRequest();
+  req.open('GET', '/logs/');
+  req.timeout = 5000;
+  req.onreadystatechange = function() {
+    if (this.readyState !== 4) return;
+    const pre = document.getElementById('logPre');
+    if (this.status !== 200) {
+      pre.textContent = 'HTTP ' + this.status + ' — ' + (this.responseText || 'fetch failed');
+      return;
+    }
+    // Preserve scroll position if user has scrolled up (don't yank
+    // them back to the bottom while reading older lines).
+    const scrolledToBottom =
+      pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40;
+    pre.textContent = this.responseText;
+    if (scrolledToBottom) pre.scrollTop = pre.scrollHeight;
+    const lines = (this.responseText.match(/\n/g) || []).length;
+    document.getElementById('logCount').textContent = lines + ' lines';
+  };
+  req.send();
+}
+
+function copyLogs() {
+  const pre = document.getElementById('logPre');
+  const status = document.getElementById('copyStatus');
+  const text = pre.textContent;
+
+  // Three-tier fallback because we're on plain HTTP (the device's LAN
+  // IP), and navigator.clipboard is gated to secure contexts in most
+  // modern browsers.
+  //
+  //   1. navigator.clipboard.writeText — works on HTTPS/localhost only
+  //   2. temporary textarea + document.execCommand('copy') — classic
+  //      pre-Clipboard-API approach, works on plain HTTP across
+  //      Chrome/Safari/Firefox even with execCommand officially deprecated
+  //   3. visible selection of the <pre> — if both above fail, at least
+  //      give the user a single ⌘C / Ctrl+C away
+  function done(msg) {
+    status.textContent = msg;
+    setTimeout(function() { status.textContent = ''; }, 3000);
+  }
+
+  // Tier 1
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text)
+      .then(function() { done('copied ✓'); })
+      .catch(function() { tier2(); });
+    return;
+  }
+  tier2();
+
+  function tier2() {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    // Off-screen but focusable. iOS Safari needs contentEditable for
+    // the selection to take inside an off-screen textarea, but the
+    // execCommand path bypasses that on desktop.
+    ta.style.position = 'fixed';
+    ta.style.left = '0';
+    ta.style.top = '0';
+    ta.style.opacity = '0';
+    ta.setAttribute('readonly', '');
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    if (ok) { done('copied ✓'); return; }
+    tier3();
+  }
+
+  function tier3() {
+    // Make the log area itself the selection so the user only needs
+    // to hit ⌘C / Ctrl+C. Keeps focus on the <pre> so the keystroke
+    // lands on the right element.
+    const range = document.createRange();
+    range.selectNodeContents(pre);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    pre.focus && pre.focus();
+    done('selected — press ⌘C / Ctrl+C to copy');
+  }
+}
+
+function setupAutoRefresh() {
+  const cb = document.getElementById('autoRefresh');
+  function apply() {
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    if (cb.checked) autoTimer = setInterval(refreshLogs, 2000);
+  }
+  cb.addEventListener('change', apply);
+  apply();
+}
+
+refreshLogs();
+setupAutoRefresh();
+</script>
+{% endblock %}
+
+{% block embed_scripts %}
+{% endblock %}

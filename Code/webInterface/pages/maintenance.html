@@ -1,0 +1,152 @@
+{% extends "../layout.html" %}
+
+{% block header_headline_title %}
+<span data-i18n="title_maintenance">Maintenance</span>
+{% endblock %}
+
+{% block top_navigation %}
+{% run use_component("topNavigation", "maintenance") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "maintenance") %}
+{% endblock %}
+
+{% block content %}
+
+<!-- ==================== Maintenance timers ==================== -->
+<section>
+  <div class="card">
+    <h2 data-i18n="section_timer_title">Maintenance timers</h2>
+    <p class="card-sub">Reset a timer after you complete the corresponding task.</p>
+
+    <div class="row">
+      <span class="label" data-i18n="tim_label_chlorine">Last chlorine add</span>
+      <span style="display:inline-flex;gap:.6rem;align-items:center">
+        <span class="value"><span id="cltimer">n/a</span> ago</span>
+        <button id="cltimerbtn" class="btn btn-ghost"
+                onclick="buttonConfirm(this); sendCommand('resetTimerChlorine')"
+                data-i18n="btn_reset" style="min-height:32px;padding:0 .7rem;font-size:.8rem">reset</button>
+      </span>
+    </div>
+    <div class="row">
+      <span class="label" data-i18n="tim_label_filter_change">Last filter change</span>
+      <span style="display:inline-flex;gap:.6rem;align-items:center">
+        <span class="value"><span id="freplacetimer">n/a</span> ago</span>
+        <button id="freplacetimerbtn" class="btn btn-ghost"
+                onclick="buttonConfirm(this); sendCommand('resetTimerReplaceFilter')"
+                data-i18n="btn_reset" style="min-height:32px;padding:0 .7rem;font-size:.8rem">reset</button>
+      </span>
+    </div>
+    <div class="row">
+      <span class="label" data-i18n="tim_label_filter_clean">Last filter clean</span>
+      <span style="display:inline-flex;gap:.6rem;align-items:center">
+        <span class="value"><span id="fcleantimer">n/a</span> ago</span>
+        <button id="fcleantimerbtn" class="btn btn-ghost"
+                onclick="buttonConfirm(this); sendCommand('resetTimerCleanFilter')"
+                data-i18n="btn_reset" style="min-height:32px;padding:0 .7rem;font-size:.8rem">reset</button>
+      </span>
+    </div>
+    <div class="row">
+      <span class="label" data-i18n="tim_label_filter_rinse">Last filter rinse</span>
+      <span style="display:inline-flex;gap:.6rem;align-items:center">
+        <span class="value"><span id="frinsetimer">n/a</span> ago</span>
+        <button id="frinsetimerbtn" class="btn btn-ghost"
+                onclick="buttonConfirm(this); sendCommand('resetTimerRinseFilter')"
+                data-i18n="btn_reset" style="min-height:32px;padding:0 .7rem;font-size:.8rem">reset</button>
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== Totals (uptime, cost, energy) ==================== -->
+<section>
+  <div class="card">
+    <h2 data-i18n="section_totals_title">Totals</h2>
+    <div class="row">
+      <span class="label">
+        <span data-i18n="totals_time_label">Time</span>
+        <span class="tooltip" data-text="ESP sends UTC. Browser converts to Local."
+              data-i18n="[data-text]tooltip_time">?</span>
+      </span>
+      <span class="value" id="time">n/a</span>
+    </div>
+    <div class="row">
+      <span class="label">
+        <span data-i18n="totals_ready_label">Ready in</span>
+        <span class="tooltip"
+              data-text="Estimated time until target temperature. Most accurate when ambient temperature is given (e.g. from Home Assistant)."
+              data-i18n="[data-text]tooltip_ready">?</span>
+      </span>
+      <span class="value" id="t2r">n/a</span>
+    </div>
+    <div class="row">
+      <span class="label">
+        <span data-i18n="totals_uptime_label">Uptime</span>
+        <span class="tooltip" data-text="Total running time of ESP since counter was reset. Rebooting continues counting."
+              data-i18n="[data-text]tooltip_uptime">?</span>
+      </span>
+      <span class="value" id="uptime">n/a</span>
+    </div>
+    <div class="row">
+      <span class="label" data-i18n="totals_pump_label">Pump</span>
+      <span class="value" id="filtertime">n/a</span>
+    </div>
+    <div class="row">
+      <span class="label" data-i18n="totals_heating_label">Heating</span>
+      <span class="value" id="heatingtime">n/a</span>
+    </div>
+    <div class="row">
+      <span class="label" data-i18n="totals_air_label">Air</span>
+      <span class="value" id="airtime">n/a</span>
+    </div>
+    <div class="row" id="jetstotals">
+      <span class="label" data-i18n="totals_hydrojets_label">Hydrojets</span>
+      <span class="value" id="jettime">n/a</span>
+    </div>
+    <div class="row">
+      <span class="label" data-i18n="totals_cost_label">Estimated cost</span>
+      <span class="value" id="cost">n/a</span>
+    </div>
+    <div style="margin-top:.75rem;text-align:right">
+      <button id="reset" class="btn btn-ghost" onclick="resetTotals()"
+              data-i18n="btn_reset">reset</button>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== Calibration ==================== -->
+<section>
+  <div class="card">
+    <h2 data-i18n="section_calibration">Calibration</h2>
+    <p class="card-sub">
+      Tells the virtual-temperature estimator whether your spa's cooling-curve has been calibrated.
+      Uncheck to recalibrate from current readings.
+    </p>
+    <label class="toggle" style="justify-content:space-between;width:100%">
+      <span>
+        <span data-i18n="label_calibrated">Calibrated</span>
+        <span class="tooltip" data-text="The virtual-temp model is trustworthy once calibrated. Toggle off + run a heating cycle to recalibrate."
+              data-i18n="[data-text]tooltip_calibrated_info">?</span>
+      </span>
+      <span style="display:inline-flex;align-items:center">
+        <input type="checkbox" id="calibration" onclick="toggleCalibration()">
+        <span class="sw"></span>
+      </span>
+    </label>
+    <p style="margin-top:.75rem;font-size:.85rem">
+      Need precise control? <a href="calib.html" data-i18n="link_manual_cal">Open manual calibration</a>
+    </p>
+  </div>
+</section>
+{% endblock %}
+
+{% block embed_scripts %}
+{% run embed_scripts('index') %}
+<script>
+  function toggleCalibration() {
+    let obj = document.getElementById('calibration')
+    if (obj.checked) obj.checked = false
+  }
+</script>
+{% endblock %}
