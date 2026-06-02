@@ -1,10 +1,91 @@
 WiFi-remote-for-Bestway-Lay-Z-SPA
 =================================
-ESP8266 hack to use as WiFi remote control for Bestway Lay-Z-Spa Whirlpools (including 2021 year models) <br>
 
-Check out what is new i the release notes. (Link in the right column on this page - release version)<br>
-Also see the new [language support](README2.md) pulled into this rep by @dodemodexter
-=======
+> **This is a fork** of [visualapproach/WiFi-remote-for-Bestway-Lay-Z-SPA](https://github.com/visualapproach/WiFi-remote-for-Bestway-Lay-Z-SPA)
+> with a modernised web UI and a handful of firmware-side reliability improvements.
+> The upstream firmware logic (BWC library, CIO/DSP serial protocol, language packs, etc.)
+> is unchanged and kept in sync with `upstream/development_v4`.
+
+ESP8266 hack to use as WiFi remote control for Bestway Lay-Z-Spa Whirlpools (including 2021 year models).
+
+---
+
+## What this fork adds
+
+### Web UI
+
+A focused **4-page** mobile-first interface:
+
+| | What it does |
+|---|---|
+| **Control** | Hero card with current temperature, status pill (Off / Idle / Heating / At target), big stepper for target temp, function toggles (Bubbles / Heater / Pump / Jets). Power on/off promoted to a primary action. |
+| **Maintain** | Maintenance timers + totals + calibration shortcut. |
+| **Schedules** | Off-peak heating window scheduling (v1: simple time range; tariff-API integration planned). |
+| **Settings** | Vertical list of focused sub-pages (Spa, Hardware, WiFi, MQTT, Web access, System) with live previews + "Danger zone" for Restart + Reset WiFi. |
+
+A bottom nav replaces the old burger drawer. Both light and dark modes are properly supported.
+
+### Firmware reliability
+
+- **Soft watchdog** (`src/main.cpp`) — `ESP.restart()` when heap stays fragmented (`MaxFreeBlockSize < 6 KB`) for 30 s. 5 min uptime guard prevents trips during boot. Exposes `/api/watchdog-status` for runtime auditing.
+- **In-memory log buffer** (`src/logbuf.*`) — 100-line ring buffer viewable at `/logs.html`. Critical for adapters where USB serial is one-way (CH340 RX is hardware-cut on some boards).
+- **Cookie session auth** (`src/webauth.*`) — replaces the upstream HTTP-basic prompt with a login page + session cookie. No prompt on every browser session, supports sign-out.
+
+### Home Assistant integration
+
+The upstream HA discovery is already comprehensive (69 entities — climate, switches, sensors, buttons, numbers). This fork adds:
+
+- **Configurable climate temperature unit** — `°C` / `°F` toggle in Settings → MQTT, defaults to `°C` for UK users. Discovery republishes on save.
+
+### Dev tooling
+
+Personal scripts (not intended as upstream PRs):
+
+- `scripts/dev-push` — per-file LittleFS push via `/upload.html`, with heap-aware safety net (refuses to push if `MaxFreeBlockSize < 10 KB`, post-push health probe, adaptive throttle). Bypasses `pio uploadfs` to avoid partition-wipe cycles.
+- `scripts/dev-flash` — wraps `pio` with credential pre-baking via `data_base/` so the device comes back on home WiFi without re-onboarding.
+- `scripts/dev-preview` — local Python server with template rebuild + mocked APIs for offline UI iteration.
+
+---
+
+## Screenshots
+
+### Control page
+
+| Spa off (light) | Spa off (dark) | Heating (with ETA) |
+|---|---|---|
+| ![](docs/screenshots/control-light.png) | ![](docs/screenshots/control-dark.png) | ![](docs/screenshots/control-heating.png) |
+
+The hero card warms visually when actively heating (amber left-edge + corner gradient). When heating, a rolling 6-sample temperature slope projects "ready in ~Xh Ym".
+
+### Settings IA
+
+| Landing | Spa form | WiFi (with RF tuning) |
+|---|---|---|
+| ![](docs/screenshots/settings-landing.png) | ![](docs/screenshots/settings-spa.png) | ![](docs/screenshots/settings-wifi.png) |
+
+| MQTT (with HA section) | Maintenance | Schedules |
+|---|---|---|
+| ![](docs/screenshots/settings-mqtt.png) | ![](docs/screenshots/maintenance.png) | ![](docs/screenshots/schedules.png) |
+
+| System (logs + files) | | |
+|---|---|---|
+| ![](docs/screenshots/system.png) | | |
+
+---
+
+## Building + flashing
+
+Same as upstream — `pio run -t upload` then `pio run -t uploadfs`. The `scripts/` directory has faster iteration tools once the device is on the network. See [Original README content below](#upstream-readme) for the full hardware setup.
+
+---
+
+<a id="upstream-readme"></a>
+## Upstream README
+
+Check out what is new in the release notes. (Link in the right column on this page - release version).<br>
+Also see the new [language support](README2.md) pulled into this rep by @dodemodexter.
+
+
 Latest code found in [Development branch](https://github.com/visualapproach/WiFi-remote-for-Bestway-Lay-Z-SPA/tree/development_v4)
 Build instructions and more: [Read the manual](bwc-manual.pdf)<br>
 Check out releasenotes by clicking the release version to the right on this page.<br>
