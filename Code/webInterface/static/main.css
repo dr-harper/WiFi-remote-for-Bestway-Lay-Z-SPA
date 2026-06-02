@@ -672,6 +672,55 @@ table td.center, table th.center { text-align: center; }
   margin-top: .15rem;
 }
 
+/* Power toggle. Two visual modes:
+   - PWR=0 (body.spa-off): big primary "Power on" replaces the stepper.
+     Stepper hidden because target/heater commands don't take when off.
+   - PWR=1: small "Power off" tucked below the stepper, less prominent
+     so it isn't tapped accidentally. Confirmation in JS handler. */
+.btn-power-on {
+  display: none;  /* shown only when body.spa-off */
+  align-items: center; justify-content: center;
+  gap: .55rem;
+  width: 100%;
+  min-height: 56px;
+  margin-top: .25rem;
+  padding: .85rem 1rem;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: 0; border-radius: var(--r-md);
+  font-size: 1rem; font-weight: 600;
+  letter-spacing: -.005em;
+  cursor: pointer;
+  transition: background .12s, transform .08s;
+  box-shadow: var(--shadow-sm);
+}
+.btn-power-on:hover { background: var(--accent-2); }
+.btn-power-on:active { transform: scale(.98); }
+.btn-power-on .step-ico { width: 20px; height: 20px; }
+
+.btn-power-off {
+  display: block;  /* hidden by body.spa-off rule below */
+  width: auto; margin: .85rem auto 0;
+  padding: .4rem .85rem;
+  background: transparent;
+  color: var(--text-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: .82rem; font-weight: 500;
+  cursor: pointer;
+  transition: color .12s, border-color .12s, background .12s;
+}
+.btn-power-off:hover {
+  color: var(--bad);
+  border-color: rgba(192, 57, 43, .35);
+  background: rgba(192, 57, 43, .04);
+}
+
+/* Toggle visibility based on spa power state. */
+body.spa-off .target-stepper { display: none; }
+body.spa-off .btn-power-off { display: none; }
+body.spa-off .btn-power-on { display: inline-flex; }
+
 /* Disable interactive controls when offline. Visually faded so user
    can see what's there but they can't push commands into the void. */
 body.offline .hero-card,

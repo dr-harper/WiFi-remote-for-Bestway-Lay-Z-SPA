@@ -103,7 +103,8 @@
     </p>
 
     <!-- Target stepper. Big touch targets, hard to mis-tap.
-         Sends setTarget command via existing handler — bound from JS. -->
+         Sends setTarget command via existing handler — bound from JS.
+         Hidden when spa is off (body.spa-off) — power-on must come first. -->
     <div class="target-stepper" id="targetStepper">
       <button type="button" id="targetMinus" aria-label="Decrease target">
         <svg class="step-ico"><use href="#ic-minus"/></svg>
@@ -116,6 +117,21 @@
         <svg class="step-ico"><use href="#ic-plus"/></svg>
       </button>
     </div>
+
+    <!-- Power on — primary action when the spa is off. Replaces the
+         stepper visually (CSS toggles via body.spa-off). Sends CMD 24
+         VALUE 1 via /addcommand/. -->
+    <button type="button" id="powerOnBtn" class="btn-power-on">
+      <svg class="step-ico"><use href="#ic-power"/></svg>
+      <span>Power on</span>
+    </button>
+
+    <!-- Power off — discrete secondary, visible only when the spa is on.
+         Confirms before sending to prevent accidental shutdowns of a
+         heating spa. -->
+    <button type="button" id="powerOffBtn" class="btn-power-off">
+      Power off
+    </button>
   </div>
 </section>
 
@@ -393,6 +409,11 @@
   }
 
   function updateHero(s) {
+    // Power gating — when the spa is off, target temp + heater commands
+    // don't take effect (firmware queues them but they're meaningless).
+    // body.spa-off → CSS hides the stepper + power-off, shows power-on.
+    document.body.classList.toggle('spa-off', !s.PWR);
+
     const unit = s.UNT ? '°F' : '°C';
     document.getElementById('heroTemp').textContent = (typeof s.TMP === 'number') ? s.TMP : '—';
     document.getElementById('heroUnit').textContent = unit;
@@ -435,7 +456,11 @@
       pill.classList.add('off');
       lbl.textContent = 'Off';
       setIcon('ic-power');
-      sub.innerHTML = `<span class="est">No target set</span>`;
+      // Two off-states: spa physically powered off (PWR=0) vs powered on
+      // but no target set yet (rare). Different copy clarifies which.
+      sub.innerHTML = s.PWR
+        ? `<span class="est">No target set</span>`
+        : `<span class="est">Spa is off — power on to start heating</span>`;
     }
 
     // Range bounds for stepper depend on unit. 20-40°C / 68-104°F.
@@ -501,6 +526,28 @@
   }
   document.getElementById('targetMinus').addEventListener('click', () => stepTarget(-1));
   document.getElementById('targetPlus').addEventListener('click', () => stepTarget(+1));
+
+  // Power toggle. The spa's CMD 24 sets power on/off. We send via
+  // /addcommand/ rather than via the legacy sendCommand() helper so we
+  // don't have to mutate index.js's cmdMap. Confirmation on power-off
+  // to avoid accidentally killing a heating spa.
+  function sendPower(value) {
+    fetch('/addcommand/', {
+      method: 'POST',
+      body: JSON.stringify({
+        CMD: 24, VALUE: value, XTIME: 0, INTERVAL: 0, TXT: ''
+      })
+    }).catch(() => {});
+  }
+  document.getElementById('powerOnBtn').addEventListener('click', () => {
+    sendPower(1);
+    // Optimistic — assume command will land. Banner will revert if not.
+    document.body.classList.remove('spa-off');
+  });
+  document.getElementById('powerOffBtn').addEventListener('click', () => {
+    if (!confirm('Power off the spa? The heater + pump will stop.')) return;
+    sendPower(0);
+  });
 
   // Periodic offline check — fires every 2s regardless of WS messages so
   // a silent bus still flips the banner. Also refreshes the "updated Ns ago"
