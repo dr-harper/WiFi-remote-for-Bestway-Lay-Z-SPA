@@ -1,12 +1,16 @@
 
 
+// Drawer-pattern open/close. main.css's .topnav slides in from the right
+// when the `.open` class is set; the .topnav-backdrop fades in alongside
+// so the rest of the page dims and tapping it closes the drawer.
 function topNav() {
-    const x = document.getElementById("topnav")
-    if (x.className === "topnav") {
-        x.className += " responsive"
-    } else {
-        x.className = "topnav"
-    }
+    const nav = document.getElementById("topnav")
+    const backdrop = document.getElementById("topnavBackdrop")
+    if (!nav) return
+    const opening = !nav.classList.contains("open")
+    nav.classList.toggle("open", opening)
+    if (backdrop) backdrop.classList.toggle("open", opening)
+    document.body.style.overflow = opening ? "hidden" : ""
 }
 
 function togglePlainText(id) {

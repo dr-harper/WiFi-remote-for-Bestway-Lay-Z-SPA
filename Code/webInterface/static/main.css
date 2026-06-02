@@ -1,649 +1,990 @@
- :root {
-      --accent-color: #0f4677;
-      --action-btn-color-dark: #cfcfcf9c;
-      --action-btn-color: #9898989c;
-      --btn-round-color: #545454;
-      
-      /* Nouvelles variables responsive - site plus large */
-      --container-max-width: min(100vw, 650px);
-      --container-padding: clamp(15px, 4vw, 25px);
-      --section-padding: clamp(15px, 4vw, 25px);
-      --font-size-base: clamp(14px, 3.5vw, 16px);
-      --header-height: clamp(60px, 15vw, 80px);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-      color: #444;
-      margin: 0;
-      font-size: var(--font-size-base);
-      line-height: 1.5;
-    }
-
-    .darkmode body {
-      color: #b0b0b0;
-    }
-
-    /* Container principal responsive */
-    div#site {
-      width: 100%;
-      max-width: var(--container-max-width);
-      margin: 0 auto;
-      background: #dfdfdf;
-      overflow: hidden;
-      position: relative;
-      min-height: 90vh;
-      box-shadow: 0 0 20px rgba(0,0,0,0.1);
-    }
-
-    .darkmode #site {
-      background: #333;
-    }
-
-    header,
-    section,
-    footer {
-      position: relative;
-      padding: var(--container-padding);
-    }
-
-    /* Header responsive */
-    header {
-      text-align: center;
-      background-color: var(--accent-color);
-      padding: var(--container-padding);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      height: var(--header-height);
-      position: relative;
-      left: 0;
-      z-index: 12;
-    }
-
-    #header {
-      font-size: clamp(0.9rem, 4vw, 1.1rem);
-      position: relative;
-      font-weight: normal;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    #header span:nth-child(1) {
-      font-size: 1em;
-      text-transform: uppercase;
-      font-weight: 500;
-    }
-
-    #header span:nth-child(2) {
-      font-size: 0.8em;
-      text-transform: lowercase;
-      opacity: 0.9;
-    }
-
-    #header::before {
-      content: "";
-	  background-image: url("./visualapproach.png");
-      width: clamp(28px, 8vw, 38px);
-      height: clamp(28px, 8vw, 38px);
-      background-size: contain;
-      background-repeat: no-repeat;
-      position: absolute;
-      left: calc(-1 * clamp(32px, 10vw, 43px));
-      filter: grayscale(0.2);
-      top: 50%;
-      transform: translateY(-50%);
-    }
-
-    /* Menu burger plus visible */
-    .topnavicon {
-      width: clamp(26px, 7vw, 32px);
-      height: clamp(26px, 7vw, 32px);
-      text-decoration: none;
-      color: #fff;
-      font-size: clamp(1.8em, 5vw, 2.2em);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border-radius: 6px;
-      transition: background-color 0.2s ease;
-      background-color: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-    }
-
-    .topnavicon:hover {
-      background-color: rgba(255,255,255,0.2);
-      border-color: rgba(255,255,255,0.4);
-    }
-
-    .topnavicon::before {
-      content: "\00D7";
-      line-height: 0.8;
-      position: absolute;
-      opacity: 0;
-      transition: 0.2s;
-    }
-
-    .show-before.topnavicon::before {
-      opacity: 1;
-    }
-
-    .topnavicon::after {
-      content: "\2630";
-      line-height: 0.8;
-      position: absolute;
-      transition: 0.2s;
-      opacity: 1;
-      display: inline-block;
-    }
-
-    .show-before.topnavicon::after {
-      opacity: 0;
-    }
-
-    .topnav {
-      overflow: hidden;
-      background-color: #ccc;
-      width: 100%;
-      left: 0;
-      position: absolute;
-      top: -100vh;
-      z-index: 10;
-      height: calc(100vh - var(--header-height));
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      transition: 0.3s all;
-      gap: 0.5em;
-      padding: var(--container-padding);
-      padding-top: 1em;
-    }
-
-    .darkmode .topnav {
-      background: linear-gradient(180deg, rgb(65, 65, 65) 0%, rgb(44, 44, 44) 100%);
-    }
-
-    .topnav.responsive {
-      top: var(--header-height);
-    }
-
-    .topnav a {
-      display: block;
-      color: inherit;
-      text-align: center;
-      padding: clamp(12px, 3vw, 16px);
-      text-decoration: none;
-      font-size: clamp(0.9rem, 3.5vw, 1rem);
-      font-weight: 300;
-      letter-spacing: 0.04em;
-      border-radius: 8px;
-      transition: all 0.2s ease;
-    }
-
-    .topnav a:hover {
-      color: #444;
-      background-color: #ddd;
-      transform: translateY(-1px);
-    }
-
-    /* Section display */
-    #sectionDisplay {
-      padding: 0;
-      width: 100%;
-      left: 0;
-      height: clamp(60px, 18vw, 100px);
-      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      margin: 0;
-      margin-bottom: clamp(8px, 2vw, 12px);
-      border: 2px solid #333;
-      box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-    }
-
-    div#display {
-      color: #ff2020;
-      font-size: clamp(2rem, 8vw, 4rem);
-      text-align: center;
-      background: transparent;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'Press Start 2P', monospace;
-      font-weight: normal;
-      letter-spacing: 1px;
-      text-shadow: 0 0 0px #f00, 0 0 0px #f00, 0 0 25px #f00;
-      line-height: 1;
-      white-space: nowrap;
-      padding: 9px;
-      margin: 0;
-      text-indent: 0;
-      position: relative;
-    }
-
-    /* Sections */
-    section {
-      padding: var(--section-padding);
-      background: #e2e2e2;
-      margin-bottom: 2px;
-    }
-
-    section:nth-of-type(2n + 1) {
-      background: #ededed;
-    }
-
-    .darkmode section {
-      background: #4d4d4d;
-    }
-
-    .darkmode section:nth-of-type(2n + 1) {
-      background: #3a3a3a;
-    }
-
-    h2 {
-      margin: 0 0 clamp(12px, 3vw, 16px) 0;
-      font-size: clamp(1rem, 4vw, 1.2rem);
-      text-transform: capitalize;
-      font-weight: 300;
-      letter-spacing: 0.6px;
-      color: #6b6b6b;
-      border-bottom: 1px solid rgba(107, 107, 107, 0.2);
-      padding-bottom: 8px;
-    }
-
-    .darkmode h2 {
-      color: #848484;
-      border-bottom-color: rgba(132, 132, 132, 0.2);
-    }
-
-    /* Tables responsives */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    table td {
-      padding: clamp(6px, 2vw, 10px);
-      vertical-align: middle;
-    }
-
-    /* Boutons améliorés */
-    .button,
-    .button_red {
-      text-decoration: none;
-      border: none;
-      color: white;
-      background-color: var(--accent-color);
-      padding: clamp(8px, 2.5vw, 12px) clamp(16px, 5vw, 24px);
-      font-size: clamp(0.75rem, 3vw, 0.85rem);
-      cursor: pointer;
-      border: 1px solid #d6d6d6;
-      border-radius: 25px;
-      outline: none;
-      margin: 4px auto;
-      display: inline-block;
-      text-transform: uppercase;
-      letter-spacing: 1.1px;
-      transition: all 0.2s ease;
-      min-height: 40px;
-      min-width: 80px;
-    }
-
-    .button:hover,
-    .button_red:hover {
-      background-color: #0076d1;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      transform: translateY(-1px);
-    }
-
-    /* Contrôles range améliorés */
-    input[type="range"] {
-      -webkit-appearance: none;
-      width: 100%;
-      height: clamp(30px, 8vw, 38px);
-      background: #ccc;
-      border-radius: 25px;
-      padding: 0 4px;
-      margin: 8px 0;
-      outline: none;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      height: clamp(20px, 6vw, 26px);
-      width: clamp(20px, 6vw, 26px);
-      border-radius: 50%;
-      background: var(--accent-color);
-      cursor: ew-resize;
-      border: 2px solid white;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-
-    input[type="range"]::-webkit-slider-thumb:hover {
-      background: #0076d1;
-      transform: scale(1.1);
-    }
-
-    /* Switches améliorés avec états chauffage */
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: clamp(50px, 12vw, 60px);
-      height: clamp(28px, 7vw, 34px);
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      transition: 0.3s ease;
-      border-radius: 25px;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: clamp(20px, 5.5vw, 26px);
-      width: clamp(20px, 5.5vw, 26px);
-      left: 4px;
-      bottom: 50%;
-      transform: translateY(50%);
-      background-color: var(--accent-color);
-      border: 2px solid white;
-      transition: 0.3s ease;
-      border-radius: 50%;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-
-    input:checked + .slider {
-      background-color: var(--accent-color);
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(clamp(16px, 4vw, 22px)) translateY(50%);
-      background-color: white;
-    }
-
-    /* États spéciaux pour le chauffage */
-    .slider.heateron {
-      background-color: #28a745 !important;
-    }
-
-    .slider.heateron:before {
-      background-color: #28a745 !important;
-      border-color: white !important;
-    }
-
-    input:checked + .slider.heateron {
-      background-color: #dc3545 !important;
-    }
-
-    input:checked + .slider.heateron:before {
-      background-color: white !important;
-      transform: translateX(clamp(16px, 4vw, 22px)) translateY(50%);
-    }
-
-    .slider.heateroff {
-      background-color: #28a745 !important;
-    }
-
-    .slider.heateroff:before {
-      background-color: white !important;
-      border-color: #28a745 !important;
-    }
-
-    input:checked + .slider.heateroff {
-      background-color: #28a745 !important;
-    }
-
-    input:checked + .slider.heateroff:before {
-      background-color: white !important;
-      transform: translateX(clamp(16px, 4vw, 22px)) translateY(50%);
-    }
-
-    /* Sélecteurs de température améliorés */
-    .selector {
-      position: relative;
-      width: clamp(80px, 20vw, 120px);
-      border-radius: 15px;
-      margin: auto;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
-
-    .selector .selectorbutton {
-      width: 100%;
-      height: clamp(28px, 7vw, 35px);
-      color: #fff;
-      font-size: clamp(16px, 4vw, 20px);
-      background-color: var(--accent-color);
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-
-    .selector .selectorbutton.selectortop {
-      border-radius: 15px 15px 0 0;
-    }
-
-    .selector .selectorbutton.selectorbottom {
-      border-radius: 0 0 15px 15px;
-    }
-
-    .selector .selectorbutton:hover {
-      background-color: #0076d1;
-    }
-
-    .selector .wrapper {
-      background: #ccc;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: clamp(45px, 12vw, 60px);
-    }
-
-    .selector .numDisplay {
-      color: var(--accent-color);
-      font-size: clamp(24px, 7vw, 34px);
-      font-weight: bold;
-      position: relative;
-      width: fit-content;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .selector .numDisplay::after {
-      content: "°";
-      position: absolute;
-      right: -12px;
-      top: 0;
-      font-weight: 200;
-      font-size: 0.7em;
-    }
-
-    /* Structure pour les sélecteurs de température (avec numDisplay) */
-    .selector .numDisplay {
-      color: var(--accent-color);
-      font-size: clamp(24px, 7vw, 34px);
-      font-weight: bold;
-      position: relative;
-      width: fit-content;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-width: 40px;
-    }
-
-    /* Symbole degré pour température seulement */
-    .selector .numDisplay::after {
-      content: "°";
-      position: absolute;
-      right: -12px;
-      top: 0;
-      font-weight: 200;
-      font-size: 0.7em;
-    }
-
-    /* Structure pour le sélecteur de luminosité (avec input) */
-    .selector .selectorvalue {
-      width: 100%;
-      height: clamp(45px, 12vw, 60px);
-      border: none;
-      color: var(--accent-color);
-      font-size: clamp(24px, 7vw, 34px);
-      text-align: center;
-      background-color: #ccc;
-      padding: 0;
-      border-radius: 0;
-      appearance: textfield;
-      pointer-events: none;
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .selector .selectorvalue::-webkit-outer-spin-button,
-    .selector .selectorvalue::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-
-    .selector .selectorvalue[type=number] {
-      -moz-appearance: textfield;
-    }
-
-    /* Tooltips améliorés */
-    .tooltip {
-      position: relative;
-      display: inline-block;
-      width: clamp(18px, 4.5vw, 22px);
-      height: clamp(18px, 4.5vw, 22px);
-      font-size: clamp(0.8rem, 3vw, 1rem);
-      text-align: center;
-      text-decoration: none;
-      color: #fff;
-      background-color: var(--accent-color);
-      border-radius: 50%;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      margin-left: 6px;
-      line-height: clamp(18px, 4.5vw, 22px);
-    }
-
-    .tooltip:before {
-      content: attr(data-text);
-      position: absolute;
-      top: 30%;
-      transform: translateY(-30%);
-      left: 100%;
-      margin-left: 15px;
-      width: clamp(180px, 40vw, 220px);
-      color: #444;
-      background: #fff;
-      text-align: left;
-      padding: clamp(8px, 2vw, 12px);
-      border-radius: 8px;
-      border: 2px solid var(--accent-color);
-      z-index: 1000;
-      visibility: hidden;
-      opacity: 0;
-      transition: all 0.2s ease;
-      font-size: clamp(0.75rem, 2.5vw, 0.85rem);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-
-    .tooltip:hover:before {
-      visibility: visible;
-      opacity: 1;
-    }
-
-    /* Footer responsive */
-    footer {
-      background: rgba(0,0,0,0.05);
-      font-size: clamp(0.75rem, 2.5vw, 0.85rem);
-      text-align: center;
-      padding: var(--section-padding);
-    }
-
-    footer p {
-      margin: 0;
-      line-height: 1.6;
-    }
-
-    /* Media queries pour très petits écrans */
-    @media (max-width: 320px) {
-      :root {
-        --container-padding: 8px;
-        --section-padding: 12px;
-      }
-      
-      table td {
-        padding: 4px;
-      }
-      
-      .button, .button_red {
-        padding: 6px 12px;
-        font-size: 0.7rem;
-      }
-    }
-
-    /* Media queries pour grands écrans */
-    @media (min-width: 768px) {
-      div#site {
-        max-width: 650px;
-        margin-top: 20px;
-        border-radius: 12px;
-        overflow: hidden;
-      }
-      
-      header {
-        border-radius: 12px 12px 0 0;
-      }
-    }
-
-    /* Animations douces */
-    * {
-      transition: all 0.2s ease;
-    }
-
-    /* États d'erreur */
-    .error header {
-      background-color: rgb(132, 39, 39);
-      animation: colorfade 1s linear 0s infinite alternate-reverse;
-    }
-
-    @keyframes colorfade {
-      0% { background-color: rgb(132, 39, 39); }
-      100% { background-color: rgb(172, 82, 82); }
-    }
-
-    /* Mode sombre amélioré */
-    .darkmode .selector .wrapper {
-      background: #CCC;
-    }
-    
-    .darkmode .tooltip:before {
-      background: #2a2a2a;
-      color: #ccc;
-    }
-    
-    .darkmode footer {
-      background: rgba(255,255,255,0.05);
-    }
+/* ─────────────────────────────────────────────────────────────────────
+   Lay-Z-Spa module — design system
+   Rewritten 2026-06-01. Replaces the legacy table-driven CSS.
+
+   Conventions:
+     • Theme via CSS variables. Light is default; `body.darkmode` flips.
+     • Mobile-first; min width is ~320px, scales gracefully via clamp().
+     • Layout primitive is a `.card` (white surface, rounded, padded).
+       Within a card, `.row` is a label/value pair grid (responsive).
+     • Buttons: `.btn` is the base. Variants: `.btn-primary`, `.btn-ghost`,
+       `.btn-danger`. Always full-radius 8-10 px.
+     • Toggles: `.toggle` is the wrapping label, contains `<input
+       type=checkbox>` + `<span class="sw"></span>` + content.
+     • Existing legacy class names (`.button`, `.button_red`, `.tooltip`,
+       `.selector*`) are preserved + restyled here so pages that haven't
+       been migrated to the new card layout still look coherent.
+   ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface + ink — light theme */
+  --bg:           #f3f6fa;
+  --card:         #ffffff;
+  --card-2:       #f8fafd;  /* sub-card / muted surface */
+  --text:         #0f1d2c;
+  --text-2:       #4a5d72;  /* secondary text, labels */
+  --text-3:       #93a5b8;  /* tertiary, placeholder */
+  --border:       #dde6ee;
+  --border-2:     #eef2f7;
+  --accent:       #0f4677;  /* project theme color */
+  --accent-2:     #16578f;
+  --accent-fg:    #ffffff;
+  --good:         #16a34a;
+  --bad:          #c0392b;
+  --warn:         #d97706;
+
+  /* Spacing scale (4px base) */
+  --s-1: .25rem;
+  --s-2: .5rem;
+  --s-3: .75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+
+  /* Radii */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(15,29,44,.05);
+  --shadow-md: 0 4px 14px rgba(15,29,44,.08);
+  --shadow-lg: 0 12px 36px rgba(15,29,44,.12);
+
+  /* Layout */
+  --container-max: min(100vw, 720px);
+  --container-pad: clamp(0.75rem, 3vw, 1.25rem);
+  --header-h:      clamp(56px, 12vw, 64px);
+  --font-base:     clamp(14px, 3.5vw, 15.5px);
+  --font-mono:     ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+body.darkmode {
+  --bg:           #0a1a2a;
+  --card:         #142a44;
+  --card-2:       #102337;
+  --text:         #e6eef7;
+  --text-2:       #b5c4d6;
+  --text-3:       #6c819a;
+  --border:       #1f3a59;
+  --border-2:     #18304a;
+  --accent:       #2f7fc1;
+  --accent-2:     #4a9bdc;
+  --accent-fg:    #ffffff;
+  --shadow-sm:    0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:    0 4px 14px rgba(0,0,0,.4);
+  --shadow-lg:    0 12px 36px rgba(0,0,0,.5);
+}
+
+/* ─── Reset + base ───────────────────────────────────────────────── */
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+               "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: var(--font-base);
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code, .mono { font-family: var(--font-mono); font-size: .9em; }
+
+h1, h2, h3 { margin: 0 0 var(--s-3); font-weight: 600; line-height: 1.25; color: var(--text); }
+h1 { font-size: 1.35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.05rem; }
+h3 { font-size: .95rem; color: var(--text-2); font-weight: 500; }
+
+p { margin: 0 0 var(--s-3); color: var(--text-2); }
+
+/* ─── App shell ──────────────────────────────────────────────────── */
+
+#site {
+  width: 100%;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--bg);
+  position: relative;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: 0 var(--container-pad);
+  height: var(--header-h);
+  background: var(--accent);
+  color: var(--accent-fg);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+header a { color: inherit; text-decoration: none; }
+
+#header {
+  display: flex; flex-direction: column;
+  font-size: 1rem; font-weight: 600;
+  letter-spacing: .01em;
+}
+#header span { display: block; }
+#header span:nth-child(2) {
+  font-size: .7rem; font-weight: 400;
+  opacity: .75; text-transform: uppercase; letter-spacing: .08em;
+}
+
+/* Sections inside the app shell are stacked-cards by default */
+section {
+  padding: var(--s-4) var(--container-pad);
+}
+section + section { padding-top: 0; }
+
+footer {
+  padding: var(--s-5) var(--container-pad);
+  text-align: center;
+  color: var(--text-3);
+  font-size: .82rem;
+}
+
+/* ─── Card primitive ────────────────────────────────────────────── */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s-4);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--s-4);
+}
+
+.card-title {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s-3);
+  margin: 0 0 var(--s-3);
+  font-size: 1.05rem; font-weight: 600; color: var(--text);
+}
+
+.card-sub {
+  margin: -.25rem 0 var(--s-3);
+  font-size: .85rem; color: var(--text-2);
+}
+
+/* Inline rows — label / value pairs inside a card */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  gap: var(--s-2) var(--s-4);
+  padding: var(--s-2) 0;
+  align-items: center;
+  border-bottom: 1px solid var(--border-2);
+}
+.row:last-child { border-bottom: none; padding-bottom: 0; }
+.row .label { color: var(--text-2); font-size: .9rem; }
+.row .value { color: var(--text); font-weight: 500; }
+.row .value code { color: var(--text); }
+
+/* Big numeric / display blocks (LCD-style) */
+.display {
+  background: #0a1626; color: #ff5050;
+  border-radius: var(--r-md);
+  padding: var(--s-5) var(--s-4);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: clamp(2rem, 9vw, 3.25rem);
+  letter-spacing: .15em;
+  font-weight: 700;
+  text-shadow: 0 0 14px rgba(255,80,80,.6);
+  margin-bottom: var(--s-4);
+  min-height: 4.5rem;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────── */
+
+.btn, button.btn, input[type="button"].btn, input[type="submit"].btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--s-2);
+  min-height: 40px;
+  padding: 0 var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+  color: var(--text);
+  font: inherit; font-size: .9rem; font-weight: 500;
+  cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+  text-decoration: none;
+}
+.btn:hover, button.btn:hover { background: var(--card-2); border-color: var(--text-3); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Variants — written with `.btn.btn-X` so the specificity beats the
+   `button.btn` base rule above. Otherwise the base background wins and
+   primary/danger buttons render as plain neutral. */
+.btn.btn-primary, button.btn-primary, a.btn-primary {
+  background: var(--accent); border-color: var(--accent); color: var(--accent-fg);
+}
+.btn.btn-primary:hover, button.btn-primary:hover, a.btn-primary:hover {
+  background: var(--accent-2); border-color: var(--accent-2); color: var(--accent-fg);
+}
+
+.btn.btn-ghost, button.btn-ghost, a.btn-ghost {
+  background: transparent; border-color: var(--border);
+}
+.btn.btn-ghost:hover, button.btn-ghost:hover, a.btn-ghost:hover { background: var(--card-2); }
+
+.btn.btn-danger, button.btn-danger, a.btn-danger {
+  background: var(--bad); border-color: var(--bad); color: #fff;
+}
+.btn.btn-danger:hover, button.btn-danger:hover, a.btn-danger:hover {
+  background: #a02d22; border-color: #a02d22;
+}
+
+.btn-block { display: flex; width: 100%; }
+
+/* Legacy classes restyled — pages that haven't migrated yet */
+.button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 40px; padding: 0 var(--s-4);
+  background: var(--accent); color: var(--accent-fg);
+  border: 1px solid var(--accent); border-radius: var(--r-md);
+  font-weight: 500; cursor: pointer;
+  text-decoration: none;
+}
+.button:hover { background: var(--accent-2); border-color: var(--accent-2); }
+
+.button_red {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 40px; padding: 0 var(--s-4);
+  background: var(--bad); color: #fff;
+  border: 1px solid var(--bad); border-radius: var(--r-md);
+  font-weight: 500; cursor: pointer;
+}
+.button_red:hover { background: #a02d22; }
+
+/* ─── Form inputs ─────────────────────────────────────────────── */
+
+input[type="text"], input[type="password"], input[type="number"],
+input[type="email"], input[type="search"], select, textarea {
+  width: 100%;
+  padding: .55rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit; font-size: .92rem;
+  transition: border-color .12s, box-shadow .12s;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15,70,119,.15);
+}
+input::placeholder { color: var(--text-3); }
+
+label {
+  display: block; font-size: .85rem; font-weight: 500;
+  color: var(--text-2); margin-bottom: var(--s-1);
+}
+
+/* ─── Toggle switch (.toggle + .sw) ───────────────────────────── */
+/* Material 3 / WCAG-friendly: 52x32 outer, 24x24 thumb. */
+
+.toggle {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  cursor: pointer;
+  user-select: none;
+}
+.toggle input[type="checkbox"], .fn-toggle input[type="checkbox"] {
+  position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;
+}
+.toggle .sw, .fn-toggle .sw {
+  position: relative;
+  width: 52px; height: 32px;
+  background: #cbd5e1;
+  border-radius: 999px;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.toggle .sw, .fn-toggle .sw::after {
+  content: '';
+  position: absolute; top: 4px; left: 4px;
+  width: 24px; height: 24px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform .18s;
+}
+.toggle input:checked + .sw, .fn-toggle input:checked + .sw {
+  background: var(--accent);
+}
+.toggle input:checked + .sw, .fn-toggle input:checked + .sw::after {
+  transform: translateX(20px);
+  background: #fff;
+}
+.toggle input:focus-visible + .sw, .fn-toggle input:focus-visible + .sw {
+  box-shadow: 0 0 0 3px rgba(15,70,119,.25);
+}
+body.darkmode .toggle .sw, .fn-toggle .sw { background: #4a5d72; }
+body.darkmode .toggle input:checked + .sw, .fn-toggle input:checked + .sw { background: var(--accent); }
+
+/* ─── Slider (range input) ───────────────────────────────────── */
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px;
+  background: var(--accent);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform .1s;
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px;
+  background: var(--accent);
+  border: none; border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+
+/* ─── Tooltip "?" badge ──────────────────────────────────────── */
+
+.tooltip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.1rem; height: 1.1rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: .7rem; font-weight: 600;
+  cursor: help;
+  margin-left: .25rem;
+  position: relative;
+  vertical-align: middle;
+}
+.tooltip::after {
+  content: attr(data-text);
+  position: absolute; bottom: 130%; left: 50%;
+  transform: translateX(-50%);
+  background: var(--text); color: var(--card);
+  font-size: .75rem; font-weight: 400;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  width: max-content; max-width: 18rem;
+  white-space: normal;
+  text-align: left;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .12s;
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+}
+.tooltip:hover::after { opacity: 1; }
+.tooltip.left::after { left: auto; right: -.25rem; transform: translateX(0); }
+
+/* ─── Legacy table layouts — page hasn't been migrated yet ──── */
+/* Keep tables looking decent until they get rewritten to .card+.row */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+table.fixed { table-layout: fixed; }
+table td, table th {
+  padding: var(--s-2) 0;
+  vertical-align: middle;
+  text-align: left;
+  color: var(--text);
+}
+table td.center, table th.center { text-align: center; }
+
+/* ─── Selector (custom number input with up/down buttons) ───── */
+
+.selector {
+  display: inline-flex; flex-direction: column; align-items: center;
+  gap: var(--s-1);
+}
+.selectorbutton {
+  width: 38px; height: 32px;
+  background: var(--card-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  cursor: pointer; font-size: .9rem;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.selectorbutton:hover { background: var(--border); }
+.selectorvalue { width: 50px; text-align: center; }
+.numDisplay { font-size: 1.5rem; font-weight: 600; color: var(--text); }
+.wrapper { display: flex; align-items: center; justify-content: center; min-height: 2rem; }
+
+/* ─── Dark mode toggle (header) ──────────────────────────────── */
+/* The pre-existing #darkModeForm uses a <label class="switch">.
+   Restyle inline so the header keeps a single dark-mode control. */
+
+.switch {
+  position: relative; display: inline-block;
+  width: 40px; height: 22px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .slider {
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,.25);
+  border-radius: 999px;
+  transition: background .15s;
+  cursor: pointer;
+}
+.switch .slider::before {
+  content: '';
+  position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .18s;
+}
+.switch input:checked + .slider { background: rgba(0,0,0,.35); }
+.switch input:checked + .slider::before { transform: translateX(18px); }
+
+/* ─── Top nav (drawer overlay) ───────────────────────────────── */
+
+.topnav {
+  position: fixed; top: 0; right: -300px;
+  width: 280px; height: 100vh;
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column;
+  padding: var(--s-5) 0 var(--s-4);
+  transition: right .22s;
+  z-index: 100;
+  overflow-y: auto;
+}
+.topnav.open { right: 0; }
+.topnav a {
+  padding: var(--s-3) var(--s-5);
+  color: var(--text);
+  font-size: .95rem;
+  text-decoration: none;
+  border-bottom: 1px solid var(--border-2);
+  transition: background .1s;
+}
+.topnav a:hover { background: var(--card-2); text-decoration: none; }
+.topnav a.active { color: var(--accent); font-weight: 600; }
+/* Auto-active by matching the drawer's data-active to each link's data-menu.
+   Set on the .topnav wrapper by topNavigation.html's argument. */
+.topnav[data-active="control"]     a[data-menu="control"],
+.topnav[data-active="maintenance"] a[data-menu="maintenance"],
+.topnav[data-active="schedules"]   a[data-menu="schedules"],
+.topnav[data-active="settings"]    a[data-menu="settings"]   { color: var(--accent); font-weight: 600; }
+
+.topnavicon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px;
+  background: rgba(255,255,255,.15);
+  border-radius: var(--r-md);
+  position: relative;
+  cursor: pointer;
+}
+.topnavicon::before {
+  content: ''; position: absolute;
+  width: 20px; height: 2px; background: var(--accent-fg);
+  box-shadow: 0 -6px 0 var(--accent-fg), 0 6px 0 var(--accent-fg);
+}
+
+/* ─── Control page — hero status card ──────────────────────────
+   Glanceable answers to "is the spa on, what temp, where heading"
+   without scrolling. Status pill + big actual temp + target stepper.
+   Offline detection lives at top; controls disable when not reachable. */
+.offline-banner {
+  display: flex; align-items: center; gap: .55rem;
+  margin: 0 0 var(--s-3);
+  padding: .55rem .85rem;
+  background: rgba(192, 57, 43, .08);
+  border: 1px solid rgba(192, 57, 43, .25);
+  border-radius: var(--r-md);
+  color: var(--bad);
+  font-size: .85rem; font-weight: 500;
+}
+.offline-banner .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--bad);
+  animation: bn-pulse 1.6s infinite ease-in-out;
+}
+@keyframes bn-pulse {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+.offline-banner[hidden] { display: none; }
+
+.hero-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 1.1rem 1.15rem 1.25rem;
+  margin: 0 0 var(--s-4);
+  box-shadow: var(--shadow-sm);
+}
+.hero-status-row {
+  display: flex; align-items: center; gap: .55rem;
+  margin: 0 0 .3rem;
+}
+.status-pill {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .25rem .6rem .25rem .55rem;
+  border-radius: 999px;
+  font-size: .72rem; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase;
+  background: var(--card-2); color: var(--text-3);
+}
+.status-pill .sp-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor;
+}
+.status-pill .sp-ico {
+  width: 13px; height: 13px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.offline-banner .bn-ico {
+  width: 16px; height: 16px;
+  flex-shrink: 0;
+}
+.target-stepper .step-ico {
+  width: 22px; height: 22px;
+  display: block;
+  margin: auto;
+}
+.fn-toggle .fn-left {
+  display: inline-flex; align-items: center; gap: .55rem;
+  min-width: 0; flex: 1;
+}
+.fn-toggle .fn-ico {
+  width: 18px; height: 18px;
+  flex-shrink: 0;
+  color: var(--text-3);
+  transition: color .15s;
+}
+.fn-toggle:has(input:checked) .fn-ico { color: var(--accent); }
+/* Pump/fan icon gently spins when active — a subtle "this is running" cue. */
+.fn-toggle:has(input:checked) .fn-ico use[href="#ic-fan"] { /* no animation possible on use href filter — handled below */ }
+@keyframes fn-spin { to { transform: rotate(360deg); } }
+.fn-toggle:has(input:checked) .fn-ico-spin {
+  animation: fn-spin 2.4s linear infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes fn-shimmer {
+  0%, 100% { opacity: .85; }
+  50% { opacity: 1; }
+}
+.fn-toggle:has(input:checked) .fn-ico-pulse {
+  animation: fn-shimmer 1.8s ease-in-out infinite;
+}
+.status-pill.heating { color: #b45309; background: rgba(217, 119, 6, .12); }
+.status-pill.heating .sp-dot { animation: sp-pulse 1.4s infinite ease-in-out; }
+.status-pill.ready   { color: #047857; background: rgba(4, 120, 87, .12); }
+.status-pill.idle    { color: var(--text-2); background: var(--card-2); }
+.status-pill.off     { color: var(--text-3); background: var(--card-2); }
+.status-pill.offline { color: var(--bad);  background: rgba(192, 57, 43, .10); }
+@keyframes sp-pulse {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+
+.hero-temp {
+  display: flex; align-items: baseline; gap: .35rem;
+  margin: .1rem 0 .3rem;
+  font-feature-settings: "tnum";
+}
+.hero-temp .big {
+  font-size: clamp(3rem, 12vw, 3.6rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -.03em;
+  color: var(--text);
+}
+.hero-temp .deg {
+  font-size: 1.5rem; font-weight: 400; color: var(--text-3);
+  margin-left: .1rem;
+}
+.hero-sub {
+  color: var(--text-2);
+  font-size: .92rem;
+  margin: 0 0 1rem;
+}
+.hero-sub .ttarget { font-weight: 600; color: var(--text); }
+.hero-sub .est { color: var(--text-3); }
+
+.target-stepper {
+  display: grid;
+  grid-template-columns: 3rem 1fr 3rem;
+  gap: .5rem;
+  align-items: stretch;
+  margin: .25rem 0 0;
+}
+.target-stepper button {
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 1.4rem; font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .12s, transform .08s;
+  min-height: 56px;
+}
+.target-stepper button:hover { background: var(--border-2); }
+.target-stepper button:active { transform: scale(.97); }
+.target-stepper button:disabled {
+  opacity: .35; cursor: not-allowed;
+}
+.target-stepper .value {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-radius: var(--r-md);
+  padding: .25rem .5rem;
+}
+.target-stepper .value .num {
+  font-size: 1.65rem; font-weight: 600;
+  line-height: 1; letter-spacing: -.02em;
+  font-feature-settings: "tnum";
+}
+.target-stepper .value .lbl {
+  font-size: .65rem; font-weight: 500;
+  letter-spacing: .07em; text-transform: uppercase;
+  opacity: .85;
+  margin-top: .15rem;
+}
+
+/* Disable interactive controls when offline. Visually faded so user
+   can see what's there but they can't push commands into the void. */
+body.offline .hero-card,
+body.offline #sectionFunctions {
+  pointer-events: none;
+}
+body.offline .hero-card,
+body.offline #sectionFunctions { opacity: .65; }
+body.offline .offline-banner { opacity: 1; }
+
+/* Function-toggle visual state — when active (spa is doing it), the
+   row picks up the accent so a glance confirms what's running. */
+.fn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem .85rem; }
+.fn-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+  padding: .55rem .7rem;
+  background: var(--card-2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+  transition: background .12s, border-color .12s;
+}
+.fn-toggle:has(input:checked) {
+  background: rgba(15, 70, 119, .06);
+  border-color: rgba(15, 70, 119, .18);
+}
+.fn-toggle .fn-label { font-weight: 500; color: var(--text); }
+.fn-toggle:has(input:checked) .fn-label { color: var(--accent); }
+
+/* Collapsible "Display & advanced" disclosure. Uses native <details>
+   so it's keyboard-accessible without JS. */
+.disclosure { margin: .5rem 0 var(--s-4); }
+.disclosure > summary {
+  cursor: pointer; list-style: none;
+  padding: .55rem .15rem;
+  font-size: .85rem; font-weight: 500; color: var(--text-2);
+  display: flex; align-items: center; gap: .35rem;
+  user-select: none;
+}
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary::before {
+  content: '›';
+  font-size: 1rem;
+  transition: transform .15s;
+  display: inline-block;
+}
+.disclosure[open] > summary::before { transform: rotate(90deg); }
+.disclosure > summary:hover { color: var(--text); }
+
+/* ─── Settings landing — vertical list of rows ───────────────
+   Mirrors HeatSync's /config IA: each row is a link to a focused
+   sub-page, with an icon, title, live preview value, and a chevron.
+   Section headers group related rows. */
+.set-section {
+  margin: 1.2rem 0 .4rem;
+  color: var(--text-3);
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  padding: 0 var(--s-1);
+}
+.set-section:first-child { margin-top: .4rem; }
+
+.set-list {
+  display: flex; flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.set-row {
+  display: flex; align-items: center;
+  gap: .7rem;
+  padding: .85rem 1rem;
+  color: var(--text); text-decoration: none;
+  border-bottom: 1px solid var(--border-2);
+  transition: background .12s;
+}
+.set-row:last-child { border-bottom: 0; }
+.set-row:hover { background: var(--card-2); text-decoration: none; }
+.set-row .set-ico {
+  flex-shrink: 0;
+  width: 1.6rem; height: 1.6rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  background: rgba(15,70,119,.10);
+  color: var(--accent);
+  font-size: 1rem; line-height: 1;
+}
+.set-row .set-title {
+  flex: 1; min-width: 0;
+  font-size: .95rem; font-weight: 500;
+}
+.set-row .set-preview {
+  color: var(--text-3);
+  font-size: .8rem;
+  text-align: right;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 55%;
+}
+.set-row .set-chev {
+  color: var(--text-3);
+  flex-shrink: 0;
+  font-size: 1rem; line-height: 1;
+}
+.set-row.danger .set-title { color: var(--bad); }
+.set-row.danger .set-ico {
+  background: rgba(220, 38, 38, .10);
+  color: var(--bad);
+}
+
+.back-link {
+  display: inline-flex; align-items: center; gap: .35rem;
+  color: var(--text-3);
+  font-size: .85rem; font-weight: 500;
+  text-decoration: none;
+  margin: .25rem 0 .85rem;
+  transition: color .12s;
+}
+.back-link:hover { color: var(--text); text-decoration: none; }
+
+/* ─── Bottom nav (primary nav at all widths) ──────────────────
+   Replaces the drawer entirely. Fixed bar pinned to the viewport
+   bottom, with backdrop blur. On desktop it stays full-width but the
+   inner items cap at the container width so they don't drift apart. */
+.bottomnav {
+  display: flex;
+  position: fixed; left: 0; right: 0; bottom: 0;
+  z-index: 60;
+  background: rgba(255,255,255,.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border);
+  padding: .35rem .25rem calc(.35rem + env(safe-area-inset-bottom, 0));
+  justify-content: space-around;
+  gap: .15rem;
+}
+@media (min-width: 720px) {
+  /* Centre the items on desktop so the bar doesn't feel sparse */
+  .bottomnav { justify-content: center; gap: 2rem; padding: .5rem 1rem; }
+}
+.bottomnav a {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center;
+  gap: .18rem;
+  padding: .4rem .25rem;
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text-3);
+  font-size: .7rem; font-weight: 500; line-height: 1;
+  transition: color .15s, background .15s;
+  max-width: 8rem;
+}
+.bottomnav a .bn-ico { font-size: 1.05rem; line-height: 1; }
+.bottomnav a:hover { color: var(--text-2); text-decoration: none; }
+.bottomnav[data-active="control"]     a[data-menu="control"],
+.bottomnav[data-active="maintenance"] a[data-menu="maintenance"],
+.bottomnav[data-active="schedules"]   a[data-menu="schedules"],
+.bottomnav[data-active="settings"]    a[data-menu="settings"] {
+  color: var(--accent);
+  background: rgba(15,70,119,.08);
+}
+/* Reserve viewport space so the sticky save bar + content don't sit
+   under the bottom nav. 4.4rem accounts for icon+label+padding. */
+body { padding-bottom: calc(4.4rem + env(safe-area-inset-bottom, 0)); }
+.action-bar { bottom: calc(4.4rem + env(safe-area-inset-bottom, 0)); }
+
+@media (prefers-color-scheme: dark) {
+  .bottomnav { background: rgba(20,25,32,.94); }
+}
+
+/* Overlay backdrop when nav is open */
+.topnav-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 99;
+  opacity: 0; pointer-events: none;
+  transition: opacity .22s;
+}
+.topnav-backdrop.open {
+  opacity: 1; pointer-events: auto;
+}
+
+/* ─── Status indicators ─────────────────────────────────────── */
+
+.status-dot {
+  display: inline-block;
+  width: .65em; height: .65em; border-radius: 50%;
+  background: var(--text-3);
+  margin-right: var(--s-2);
+  vertical-align: middle;
+}
+.status-dot.ok    { background: var(--good); }
+.status-dot.bad   { background: var(--bad); }
+.status-dot.warn  { background: var(--warn); }
+
+.pill {
+  display: inline-flex; align-items: center;
+  padding: 2px var(--s-2);
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: .75rem; font-weight: 500;
+  color: var(--text-2);
+}
+
+/* ─── Callouts ──────────────────────────────────────────────── */
+
+.callout {
+  border-left: 3px solid var(--accent);
+  background: var(--card-2);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  margin: var(--s-3) 0;
+  font-size: .9rem;
+  color: var(--text-2);
+}
+.callout.warn { border-left-color: var(--warn); }
+.callout.bad  { border-left-color: var(--bad); }
+.callout.good { border-left-color: var(--good); }
+
+/* ─── Utilities ─────────────────────────────────────────────── */
+
+.center { text-align: center; }
+.muted  { color: var(--text-3); }
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+.hidden { display: none !important; }
+.flex { display: flex; gap: var(--s-3); align-items: center; }
+.flex-1 { flex: 1; }
+.stack > * + * { margin-top: var(--s-3); }
+
+/* ─── Subnav (tab strip within a section) ──────────────────────── */
+/* Used inside Settings/* pages to switch between Spa/Hardware/WiFi/
+   MQTT/Web/System. Each tab is a real <a href> — page navigates, no
+   JS state-swap. Sticks just under the main header so it stays
+   visible while scrolling long settings pages. */
+
+.subnav {
+  display: flex;
+  gap: 0;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: var(--header-h);
+  z-index: 40;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 var(--container-pad);
+  margin: 0;
+}
+.subnav a {
+  flex-shrink: 0;
+  padding: .7rem .95rem;
+  font-size: .88rem;
+  font-weight: 500;
+  color: var(--text-2);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color .12s, border-color .12s;
+  white-space: nowrap;
+}
+.subnav a:hover { color: var(--text); text-decoration: none; }
+.subnav a.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+/* Auto-active via the wrapper's data-active matching each tab's data-tab */
+.subnav[data-active="spa"]      a[data-tab="spa"],
+.subnav[data-active="hardware"] a[data-tab="hardware"],
+.subnav[data-active="wifi"]     a[data-tab="wifi"],
+.subnav[data-active="mqtt"]     a[data-tab="mqtt"],
+.subnav[data-active="web"]      a[data-tab="web"],
+.subnav[data-active="system"]   a[data-tab="system"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ─── Sticky-footer action bar ─────────────────────────────────── */
+/* Pages with a primary Save action (Settings/* and Schedules) wrap
+   the save button in `.action-bar`. It sticks to viewport bottom so
+   the user never has to scroll to find Save. Blurred backdrop keeps
+   it legible over scrolling content. */
+
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0; right: 0;
+  margin: var(--s-4) calc(-1 * var(--container-pad)) 0;
+  padding: var(--s-3) var(--container-pad);
+  background: rgba(243, 246, 250, .92);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 30;
+  display: flex; justify-content: center;
+}
+body.darkmode .action-bar {
+  background: rgba(10, 26, 42, .92);
+}
+.action-bar .btn { width: 100%; max-width: 18rem; min-height: 44px; }
+
+/* Ensure last card has bottom space so the sticky bar doesn't
+   overlap its visible content */
+.has-action-bar > section:last-of-type { padding-bottom: var(--s-6); }
+
+/* Print + reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

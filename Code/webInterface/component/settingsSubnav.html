@@ -1,0 +1,11 @@
+<!-- Settings subnav — used by all settings/* pages. Each entry is a
+     real URL navigation (no JS tab-swap). The `_argument_0` is the
+     active tab id; CSS in main.css highlights it. -->
+<nav class="subnav" data-active="{{ _argument_0 }}">
+    <a href="/config.html"     data-tab="spa"      data-i18n="subtab_spa">Spa</a>
+    <a href="/hwconfig.html"   data-tab="hardware" data-i18n="subtab_hardware">Hardware</a>
+    <a href="/wifi.html"       data-tab="wifi"     data-i18n="subtab_wifi">WiFi</a>
+    <a href="/mqtt.html"       data-tab="mqtt"     data-i18n="subtab_mqtt">MQTT</a>
+    <a href="/webconfig.html"  data-tab="web"      data-i18n="subtab_web">Web</a>
+    <a href="/system.html"     data-tab="system"   data-i18n="subtab_system">System</a>
+</nav>

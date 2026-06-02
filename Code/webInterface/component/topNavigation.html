@@ -1,14 +1,16 @@
 <div class="topnav" id="topnav" data-active="{{ _argument_0 }}">
-    <!-- TODO: add all data-menu -->
-    <a href="./" data-i18n="menu_home">Home</a>
-    <a href="hwconfig.html" data-menu="hwconfig" data-i18n="menu_hwconfig">Hardware Config</a>
-    <a href="config.html" data-i18n="menu_spaconfig">SPA Config</a>
-    <a href="webconfig.html" data-i18n="menu_webconfig">Web Config</a>
-    <a href="wifi.html" data-i18n="menu_networkconfig">Network Config</a>
-    <a href="mqtt.html" data-i18n="menu_mqttconfig">MQTT Config</a>
-    <a href="/dir/" data-i18n="menu_directory">Directory</a>
-    <a href="upload.html" data-i18n="menu_upload">File Uploader</a>
-    <a href="remove.html" class="active" data-i18n="menu_remove">File Remover</a>
-    <a href="chkupdatefw.html" data-i18n="menu_chkupdatefw">Check firmware update</a>
-    <a href="/restart/" data-i18n="menu_restart">Restart ESP</a>
+    <!-- Top-level nav: 4 pages + Restart action. Each Settings sub-page
+         (Spa / Hardware / WiFi / MQTT / Web / System) has its own
+         in-page .subnav so we don't pollute the drawer with sub-tabs. -->
+    <a href="/" data-menu="control" data-i18n="menu_control">Control</a>
+    <a href="/maintenance.html" data-menu="maintenance" data-i18n="menu_maintenance">Maintenance</a>
+    <a href="/schedules.html" data-menu="schedules" data-i18n="menu_schedules">Schedules</a>
+    <a href="/config.html" data-menu="settings" data-i18n="menu_settings">Settings</a>
+
+    <!-- Restart sits at the bottom; visually separated as an action,
+         not a page. The link target is the POST /restart/ endpoint via
+         confirmation modal (JS in function.js handles the click). -->
+    <a href="/restart/" data-menu="restart" data-i18n="menu_restart"
+       style="margin-top:auto;color:var(--bad)"
+       onclick="return confirm('Restart the spa controller now?')">↻ Restart ESP</a>
 </div>

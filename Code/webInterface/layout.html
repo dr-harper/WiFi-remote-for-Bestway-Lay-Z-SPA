@@ -1,49 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <!-- TODO: title in layout-->
-    <title data-i18n="title_success">Lay-Z-Spa Module | Success!</title>
+    <title data-i18n="title_success">Lay-Z-Spa Module</title>
     <meta charset="utf-8">
-    <link rel="icon" type="image/png" sizes="180x180" href="favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="theme-color" content="#0f4677">
+    <link rel="icon" type="image/png" sizes="180x180" href="favicon.png">
+    <link rel="apple-touch-icon" href="favicon.png">
     <link rel="stylesheet" href="main.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1">
+    <link rel="manifest" href="manifest.json">
 </head>
-
 <body>
     <div id="site">
         <header>
-            {% block header_before_default %}
-            {% endblock %}
-            {% block header_dark_mode_form %}
-            <form id="darkModeForm">
-                <label class="switch">
-                    <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
-                    <span class="slider round"></span>
-                </label>
-            </form>
-            {% endblock %}
-            <a href="./">
+            <a href="./" style="display:flex;align-items:center;gap:.6rem;text-decoration:none">
+                <!-- Header mark — the original visualapproach branding the
+                     project ships with. Kept as the page logo by request
+                     from the fork owner; favicon.png stays as the browser
+                     tab icon (see <link rel="icon"> above). -->
+                <img src="visualapproach.png" alt="visualapproach"
+                     style="width:34px;height:34px;object-fit:contain;
+                            background:#fff;border-radius:8px;padding:3px">
                 <div id="header">
                     {% block header_headline_title %}
+                    <span>Lay-Z-Spa</span>
                     {% endblock %}
-                    <span data-i18n="header_module">lay-z-spa module</span>
+                    <span data-i18n="header_module">module</span>
                 </div>
             </a>
-            {% block header_top_navigation_icon %}
-            <a href="javascript:void(0);" class="topnavicon" onclick="topNav()"></a>
-            {% endblock %}
-            {% block header_after_default %}{% endblock %}
-        </header>
-        {% block top_navigation %}{% endblock %}
-        {% block content %}{% endblock %}
-    </div>
 
-    <footer>
-        {% block footer %}
-        {% endblock %}
-    </footer>
+            <div style="display:flex;align-items:center;gap:.5rem">
+                {% block header_dark_mode_form %}
+                <form id="darkModeForm" aria-label="Dark mode">
+                    <label class="switch" title="Dark mode">
+                        <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+                        <span class="slider"></span>
+                    </label>
+                </form>
+                {% endblock %}
+
+            </div>
+        </header>
+
+        {% block content %}{% endblock %}
+
+        {% block bottom_navigation %}{% endblock %}
+
+        <footer>
+            {% block footer %}
+            <span data-i18n="footer_brand">Lay-Z-Spa module</span>
+            {% endblock %}
+        </footer>
+    </div>
 
     {% block after_body %}
     {% endblock %}
@@ -52,5 +60,5 @@
     {% endblock %}
     {% block embed_scripts %}
     {% endblock %}
-
 </body>
+</html>
