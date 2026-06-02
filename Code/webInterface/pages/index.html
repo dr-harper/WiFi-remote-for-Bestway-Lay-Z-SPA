@@ -346,8 +346,11 @@
 {% endblock %}
 
 {% block footer %}
-<p style="margin:0;text-align:center;color:var(--text-3);font-size:.78rem">
-  <span id="lastUpdate">Connecting…</span>
+<p style="margin:0;text-align:center">
+  <span class="live-indicator" id="liveIndicator">
+    <span class="live-dot" aria-hidden="true"></span>
+    <span id="lastUpdate">Connecting…</span>
+  </span>
 </p>
 {% endblock %}
 
@@ -364,6 +367,40 @@
 (function() {
   let lastStatesAtMs = 0;
   let lastSeenObj = null;
+  let lastTmp = null;
+
+  // Rolling temperature history for the "ready in ~Xh Ym" estimator.
+  // We need at least 3 samples spanning 30 s before projecting — otherwise
+  // sensor noise (±1 °C jitter is common) dominates the slope.
+  const tempHistory = [];   // { t: ms, tmp: °C }
+  const HISTORY_MAX = 12;   // ~2 minutes at 10 s WS cadence
+
+  function recordTempSample(s) {
+    if (typeof s.TMP !== 'number') return;
+    tempHistory.push({ t: Date.now(), tmp: s.TMP });
+    while (tempHistory.length > HISTORY_MAX) tempHistory.shift();
+  }
+
+  // Project minutes-to-target from the rolling history. Returns a human
+  // string ("~2h 15m", "~12m", "almost ready") or null when:
+  //   - not currently heating (no point projecting if heater is off)
+  //   - target not set, or already reached
+  //   - history too short / too slow / negative slope (sensor noise)
+  function estimateReadyIn(s) {
+    if (!s.RED || s.TGT <= 0 || s.TMP >= s.TGT) return null;
+    if (tempHistory.length < 3) return null;
+    const recent = tempHistory.slice(-6);
+    const spanMs = recent[recent.length - 1].t - recent[0].t;
+    if (spanMs < 30000) return null;
+    const tempDelta = recent[recent.length - 1].tmp - recent[0].tmp;
+    if (tempDelta <= 0) return null;
+    const slopePerMs = tempDelta / spanMs;
+    const etaMs = (s.TGT - s.TMP) / slopePerMs;
+    if (etaMs < 60000) return 'almost ready';
+    const h = Math.floor(etaMs / 3600000);
+    const m = Math.floor((etaMs % 3600000) / 60000);
+    return h > 0 ? `~${h}h ${m}m` : `~${m}m`;
+  }
 
   // Listen for WS messages via addEventListener instead of patching
   // window.handlemsg — the legacy onmessage handler in index.js captures
@@ -414,8 +451,23 @@
     // body.spa-off → CSS hides the stepper + power-off, shows power-on.
     document.body.classList.toggle('spa-off', !s.PWR);
 
+    // Record sample BEFORE other state changes so estimator has fresh data.
+    recordTempSample(s);
+
     const unit = s.UNT ? '°F' : '°C';
-    document.getElementById('heroTemp').textContent = (typeof s.TMP === 'number') ? s.TMP : '—';
+    const tempEl = document.getElementById('heroTemp');
+    // Brief background flash when the temperature reading changed since
+    // the last STATES message. Subtle signal of liveness; eye is drawn
+    // to the change without anything else updating.
+    if (lastTmp !== null && typeof s.TMP === 'number' && s.TMP !== lastTmp) {
+      tempEl.classList.remove('flash');     // restart animation if already flashing
+      void tempEl.offsetWidth;              // force reflow
+      tempEl.classList.add('flash');
+      clearTimeout(updateHero._flashTimer);
+      updateHero._flashTimer = setTimeout(() => tempEl.classList.remove('flash'), 650);
+    }
+    lastTmp = (typeof s.TMP === 'number') ? s.TMP : lastTmp;
+    tempEl.textContent = (typeof s.TMP === 'number') ? s.TMP : '—';
     document.getElementById('heroUnit').textContent = unit;
     document.getElementById('heroTarget').textContent = (s.TGT > 0) ? (s.TGT + unit) : '—';
     const tv = document.getElementById('targetVal');
@@ -433,7 +485,9 @@
     const lbl  = document.getElementById('statusLabel');
     const sub  = document.getElementById('heroSub');
     const ico  = document.getElementById('statusIcon');
+    const card = document.querySelector('.hero-card');
     pill.classList.remove('heating','ready','idle','off','offline');
+    if (card) card.classList.toggle('heating', !!s.RED);  // ambient cue
     function setIcon(id) {
       if (ico) ico.setAttribute('href', '#' + id);
     }
@@ -441,7 +495,11 @@
       pill.classList.add('heating');
       lbl.textContent = 'Heating';
       setIcon('ic-flame');
-      sub.innerHTML = `Target <span class="ttarget">${s.TGT}${unit}</span> <span class="est">· heater on</span>`;
+      // Add "ready in ~Xh Ym" when we have enough samples to project.
+      // Falls back to "heater on" when the estimate is still warming up.
+      const eta = estimateReadyIn(s);
+      const tail = eta ? `ready in ${eta}` : 'heater on';
+      sub.innerHTML = `Target <span class="ttarget">${s.TGT}${unit}</span> <span class="est">· ${tail}</span>`;
     } else if (s.TGT > 0 && s.TMP >= s.TGT) {
       pill.classList.add('ready');
       lbl.textContent = 'At target';

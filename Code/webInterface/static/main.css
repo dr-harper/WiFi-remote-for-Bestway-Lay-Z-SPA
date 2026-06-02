@@ -540,6 +540,23 @@ table td.center, table th.center { text-align: center; }
   padding: 1.1rem 1.15rem 1.25rem;
   margin: 0 0 var(--s-4);
   box-shadow: var(--shadow-sm);
+  transition: background .6s ease, border-color .6s ease;
+}
+/* Heating ambient — the hero card warms visually when the heater coil
+   is drawing power (status pill is .heating). Subtle amber gradient
+   + left-edge accent reinforces "something is happening" without
+   any extra text. Toggled by JS via .heating on the card. */
+.hero-card.heating {
+  background: linear-gradient(135deg, var(--card) 60%, rgba(217, 119, 6, .07) 100%);
+  border-color: rgba(217, 119, 6, .25);
+  border-left-width: 3px;
+  border-left-color: rgba(217, 119, 6, .55);
+  padding-left: calc(1.15rem - 2px);  /* compensate for thicker border */
+}
+body.darkmode .hero-card.heating {
+  background: linear-gradient(135deg, var(--card) 60%, rgba(217, 119, 6, .12) 100%);
+  border-color: rgba(217, 119, 6, .35);
+  border-left-color: rgba(251, 191, 36, .65);
 }
 .hero-status-row {
   display: flex; align-items: center; gap: .55rem;
@@ -618,6 +635,19 @@ table td.center, table th.center { text-align: center; }
   line-height: 1;
   letter-spacing: -.03em;
   color: var(--text);
+  border-radius: 6px;
+  padding: 0 .25rem;
+  margin-left: -.25rem;
+  transition: background .35s ease, color .35s ease;
+}
+/* Brief flash when WS reports a new temperature. Signals liveness +
+   draws the eye to the change. Class added by JS for ~600ms then
+   removed; transition fades cleanly back. */
+.hero-temp .big.flash {
+  background: rgba(15, 70, 119, .12);
+}
+body.darkmode .hero-temp .big.flash {
+  background: rgba(47, 127, 193, .18);
 }
 .hero-temp .deg {
   font-size: 1.5rem; font-weight: 400; color: var(--text-3);
@@ -721,6 +751,29 @@ table td.center, table th.center { text-align: center; }
 body.spa-off .target-stepper { display: none; }
 body.spa-off .btn-power-off { display: none; }
 body.spa-off .btn-power-on { display: inline-flex; }
+
+/* Live indicator — small pulsing dot + label, replaces the plain
+   "Live · updated just now" text. Implies real-time more than text
+   alone. Goes red + stops pulsing when body.offline. */
+.live-indicator {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .78rem; color: var(--text-3);
+}
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #047857;
+  flex-shrink: 0;
+  animation: live-pulse 2.4s infinite ease-in-out;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: .55; transform: scale(.9); }
+  50% { opacity: 1; transform: scale(1); }
+}
+body.offline .live-dot {
+  background: var(--bad);
+  animation: none;
+  opacity: .85;
+}
 
 /* Disable interactive controls when offline. Visually faded so user
    can see what's there but they can't push commands into the void. */
