@@ -316,7 +316,7 @@ label {
   transition: background .15s;
   flex-shrink: 0;
 }
-.toggle .sw, .fn-toggle .sw::after {
+.toggle .sw::after, .fn-toggle .sw::after {
   content: '';
   position: absolute; top: 4px; left: 4px;
   width: 24px; height: 24px;
@@ -328,15 +328,16 @@ label {
 .toggle input:checked + .sw, .fn-toggle input:checked + .sw {
   background: var(--accent);
 }
-.toggle input:checked + .sw, .fn-toggle input:checked + .sw::after {
+.toggle input:checked + .sw::after, .fn-toggle input:checked + .sw::after {
   transform: translateX(20px);
   background: #fff;
 }
 .toggle input:focus-visible + .sw, .fn-toggle input:focus-visible + .sw {
   box-shadow: 0 0 0 3px rgba(15,70,119,.25);
 }
-body.darkmode .toggle .sw, .fn-toggle .sw { background: #4a5d72; }
-body.darkmode .toggle input:checked + .sw, .fn-toggle input:checked + .sw { background: var(--accent); }
+body.darkmode .toggle .sw, body.darkmode .fn-toggle .sw { background: #4a5d72; }
+body.darkmode .toggle input:checked + .sw,
+body.darkmode .fn-toggle input:checked + .sw { background: var(--accent); }
 
 /* ─── Slider (range input) ───────────────────────────────────── */
 

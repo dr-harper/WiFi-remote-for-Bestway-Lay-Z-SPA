@@ -29,6 +29,25 @@
 
 <a class="back-link" href="/config.html">‹ Settings</a>
 
+<!-- ==================== Appearance ==================== -->
+<!-- Theme preference. Persisted client-side in localStorage — not on the
+     device — so every browser/profile gets its own. Relocated here from
+     the page header (was high-prominence top-right; new users mistook it
+     for a power switch). -->
+<section id="appearance-section">
+    <div class="card">
+        <h2 data-i18n="section_appearance">Appearance</h2>
+        <p class="card-sub">Theme is stored locally in your browser, not on the device.</p>
+        <label class="toggle" style="justify-content:space-between;width:100%;padding:.5rem 0">
+            <span data-i18n="label_dark_mode">Dark mode</span>
+            <span style="display:inline-flex;align-items:center">
+                <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+                <span class="sw"></span>
+            </span>
+        </label>
+    </div>
+</section>
+
 <!-- ==================== Language ==================== -->
 <section id="language-section">
     <div class="card">

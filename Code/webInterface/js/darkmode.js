@@ -1,42 +1,36 @@
-// will create a dark mode and store status in local storage
+// Dark-mode helper. The toggle itself only lives on /webconfig.html now
+// (relocated from the header to give other UI more room), so this script
+// has to be null-safe on every other page where the toggle ID is absent.
+//
+// Behaviour:
+//   - At script-load (synchronous): re-apply the stored preference to
+//     <html class="darkmode">. Runs before paint to avoid a light→dark
+//     flash on dark-mode users navigating between pages.
+//   - On DOMContentLoaded: if the toggle exists on this page, sync its
+//     checked state to the stored preference.
+//   - On toggle click: persist + apply.
 
-// Check if the dark mode status is stored in localStorage
-const darkModeToggle = document.getElementById("darkModeToggle")
-
-if (localStorage.getItem("darkModeStatus")) {
-    // Update the dark mode toggle switch and status text
-    darkModeToggle.checked = localStorage.getItem("darkModeStatus") === "On"
-
-    // Set dark mode immediately based on stored status
-    toggleDarkMode()
-}
+(function applyStoredTheme() {
+  if (localStorage.getItem('darkModeStatus') === 'On') {
+    document.body.classList.add('darkmode');
+  }
+})();
 
 function toggleDarkMode() {
-    const sliderElement = darkModeForm.querySelector(".slider")
-    if (darkModeToggle.checked) {
-        // Dark Mode is On
-        document.documentElement.classList.add("darkmode")
-        localStorage.setItem("darkModeStatus", "On")
-        sliderElement.classList.remove("moon")
-        sliderElement.classList.add("sun")
-    } else {
-        // Dark Mode is Off
-        document.documentElement.classList.remove("darkmode")
-        localStorage.setItem("darkModeStatus", "Off")
-        sliderElement.classList.remove("sun")
-        sliderElement.classList.add("moon")
-    }
+  const toggle = document.getElementById('darkModeToggle');
+  if (!toggle) return;
+  if (toggle.checked) {
+    document.body.classList.add('darkmode');
+    localStorage.setItem('darkModeStatus', 'On');
+  } else {
+    document.body.classList.remove('darkmode');
+    localStorage.setItem('darkModeStatus', 'Off');
+  }
 }
 
-// move to admin or elsewhere afterward
-document.addEventListener("DOMContentLoaded", function () {
-    const topNavIcon = document.querySelector(".topnavicon")
-
-    topNavIcon.addEventListener("click", function () {
-        topNavIcon.classList.toggle("show-before")
-        const afterIcon = topNavIcon.nextElementSibling
-        if (afterIcon) {
-            afterIcon.style.display = afterIcon.style.display === "none" ? "inline" : "none"
-        }
-    })
-})
+document.addEventListener('DOMContentLoaded', function () {
+  const toggle = document.getElementById('darkModeToggle');
+  if (toggle) {
+    toggle.checked = localStorage.getItem('darkModeStatus') === 'On';
+  }
+});

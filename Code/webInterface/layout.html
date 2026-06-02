@@ -29,17 +29,6 @@
                 </div>
             </a>
 
-            <div style="display:flex;align-items:center;gap:.5rem">
-                {% block header_dark_mode_form %}
-                <form id="darkModeForm" aria-label="Dark mode">
-                    <label class="switch" title="Dark mode">
-                        <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
-                        <span class="slider"></span>
-                    </label>
-                </form>
-                {% endblock %}
-
-            </div>
         </header>
 
         {% block content %}{% endblock %}

@@ -153,9 +153,11 @@
       }
     }).catch(() => {});
 
-  // Web access — auth status (always-on; we can't introspect the
-  // password but we know we're logged in if this page rendered)
-  setPrev('prevWeb', 'Password protected');
+  // Web access — auth status + theme. Theme lives in localStorage
+  // (browser-local, not device), surfaced here so users can see at a
+  // glance whether dark mode is on without drilling into the page.
+  const theme = (localStorage.getItem('darkModeStatus') === 'On') ? 'Dark' : 'Light';
+  setPrev('prevWeb', `${theme} theme · password protected`);
 
   // System — composite health: free DRAM heap + watchdog arm count.
   // /info/ is plain text; /api/watchdog-status is JSON. We fetch both
