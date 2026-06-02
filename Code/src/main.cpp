@@ -1,5 +1,7 @@
 #include "main.h"
 #include "ports.h"
+#include "webauth.h"
+#include "logbuf.h"
 
 #define WS_PERIOD 4.0
 // initial stack
@@ -17,6 +19,13 @@ WiFiEventHandler gotIpEventHandler, disconnectedEventHandler;
 void cb_gotIP(const WiFiEventStationModeGotIP& event)
 {
     gotIP_flag = true;
+    logbuf::writef("WiFi > GOT IP %s  gw=%s  rssi=%d  ssid='%s'  bssid=%s  ch=%d",
+                   event.ip.toString().c_str(),
+                   event.gw.toString().c_str(),
+                   WiFi.RSSI(),
+                   WiFi.SSID().c_str(),
+                   WiFi.BSSIDstr().c_str(),
+                   WiFi.channel());
 }
 
 void gotIP()
@@ -35,9 +44,36 @@ void gotIP()
     BWC_YIELD;
 }
 
+// Decode WIFI_DISCONNECT_REASON_* enum values to short labels for the
+// log buffer. Lifted from the ESP8266 SDK header — the most useful
+// codes for diagnosing join failures are around 200-215 (auth fail,
+// timeout, beacon loss).
+static const char *disconnectReasonStr(uint8_t r) {
+    switch (r) {
+        case 1:   return "UNSPECIFIED";
+        case 2:   return "AUTH_EXPIRE";
+        case 3:   return "AUTH_LEAVE";
+        case 4:   return "ASSOC_EXPIRE";
+        case 5:   return "ASSOC_TOOMANY";
+        case 6:   return "NOT_AUTHED";
+        case 7:   return "NOT_ASSOCED";
+        case 8:   return "ASSOC_LEAVE";
+        case 200: return "BEACON_TIMEOUT";
+        case 201: return "NO_AP_FOUND";
+        case 202: return "AUTH_FAIL";        // wrong password
+        case 203: return "ASSOC_FAIL";
+        case 204: return "HANDSHAKE_TIMEOUT"; // WPA2 4-way handshake fail
+        default:  return "?";
+    }
+}
+
 void cb_disconnected(const WiFiEventStationModeDisconnected& event)
 {
     disconnected_flag = true;
+    logbuf::writef("WiFi > DISCONNECTED  ssid='%s'  reason=%u (%s)",
+                   event.ssid.c_str(),
+                   (unsigned)event.reason,
+                   disconnectReasonStr((uint8_t)event.reason));
     // startSoftAp();
 }
 
@@ -55,6 +91,17 @@ void setup()
     disconnectedEventHandler = WiFi.onStationModeDisconnected(cb_disconnected);
 
     LittleFS.begin();
+    // Auth must be initialised AFTER LittleFS.begin() — it reads
+    // /auth.json for the stored password + session token, falling back
+    // to defaults on first boot. See webauth.h for the contract.
+    webauth::setup();
+    logbuf::setup();
+    // Reset reason makes wedge-recoveries visible in /logs.html — a
+    // "Software/System restart" boot following an "External System" is
+    // the soft watchdog firing; "Power-on" is a normal cold boot.
+    logbuf::writef("=== BOOT === freeHeap=%u, maxBlock=%u, FW=%s, resetReason='%s'",
+                   ESP.getFreeHeap(), ESP.getMaxFreeBlockSize(),
+                   FW_VERSION, ESP.getResetReason().c_str());
     {
         HeapSelectIram ephemeral;
         bwc = new BWC;
@@ -102,15 +149,88 @@ void setup()
     bwc->print(FW_VERSION);
     BWC_LOG_P(PSTR("End of setup() @ Millis: %d @ line: %d. Heap: %d\n"), millis(), __LINE__, ESP.getFreeHeap());
     heap_water_mark = ESP.getFreeHeap();
+
+    // Boot watchdog temporarily disabled while debugging a setup-time
+    // hang. Re-enable once root cause is found.
+    // bootGuardTicker = new Ticker;
+    // bootGuardTicker->once(BOOT_GUARD_SECONDS, []{ bootGuardFiredFlag = true; });
 }
+
+// Soft watchdog — auto-recovers from the wedge state where WiFi stays up
+// but async-TCP buffers are exhausted (HTTP thread alive but unreachable).
+// Detection: track when max-contiguous-free-block first dropped below the
+// threshold; if it stays there for the timeout AND the device has been
+// up long enough that we trust the reading, ESP.restart(). A soft restart
+// preserves OTA partition state + LittleFS contents; only MQTT/websocket
+// sessions reconnect (which they do on any transient disconnect anyway).
+//
+// Why these specific numbers (chosen 2026-06-01 after wedging on a burst):
+//  · 6 KB threshold — healthy idle is ~30 KB; "busy but fine" is ~10–15 KB;
+//    only true fragmentation drops below 6 KB. ~80% drop from baseline.
+//  · 30 s sustain — transient busy spikes finish in seconds; a wedge
+//    persists indefinitely. 30 s separates them cleanly.
+//  · 5 min uptime guard — onboarding + first NTP sync + initial MQTT
+//    handshake can briefly fragment heap. The guard lets these settle
+//    before the watchdog is allowed to fire.
+//
+// State exposed via /api/watchdog-status for runtime auditing.
+static const uint32_t  WATCHDOG_MAXBLOCK_THRESHOLD = 6000;        // bytes
+static const unsigned long WATCHDOG_LOW_HEAP_TIMEOUT = 30000UL;    // ms
+static const unsigned long WATCHDOG_MIN_UPTIME = 5UL * 60UL * 1000UL;  // ms
+
+static unsigned long lowHeapStartedMs = 0;   // when current arm-period began (0 = disarmed)
+static unsigned long wdArmCount = 0;         // how many times we've armed this boot
+static unsigned long wdLastArmedAtMs = 0;    // millis() of most recent arm event
+static uint32_t      wdLastArmedMaxBlock = 0;// snapshot at most recent arm
 
 void loop()
 {
     uint32_t freeheap = ESP.getFreeHeap();
     if(freeheap < heap_water_mark) heap_water_mark = freeheap;
 
+    // Soft watchdog tick. Cheap: two ESP-API reads + small constant logic.
+    // Logs WARN on first arm, INFO on disarm, ERROR + restart on fire.
+    uint32_t maxBlock = ESP.getMaxFreeBlockSize();
+    if (maxBlock < WATCHDOG_MAXBLOCK_THRESHOLD) {
+        if (lowHeapStartedMs == 0) {
+            lowHeapStartedMs = millis();
+            wdLastArmedAtMs = lowHeapStartedMs;
+            wdLastArmedMaxBlock = maxBlock;
+            wdArmCount++;
+            logbuf::writef("WATCHDOG arm #%lu: maxBlock=%u B below %u — uptime=%lu s, allowed to fire in %lu s if heap doesn't recover",
+                           wdArmCount, maxBlock, WATCHDOG_MAXBLOCK_THRESHOLD,
+                           millis() / 1000UL,
+                           WATCHDOG_LOW_HEAP_TIMEOUT / 1000UL);
+        } else if (millis() - lowHeapStartedMs > WATCHDOG_LOW_HEAP_TIMEOUT) {
+            // Uptime guard: don't fire during the first WATCHDOG_MIN_UPTIME ms
+            // since boot. Onboarding + NTP + first MQTT handshake can briefly
+            // fragment heap; we treat <5 min as not-yet-trustworthy.
+            if (millis() < WATCHDOG_MIN_UPTIME) {
+                static bool warnedGuard = false;
+                if (!warnedGuard) {
+                    logbuf::writef("WATCHDOG suppressed: would fire but uptime %lu s < min %lu s (boot-warmup guard)",
+                                   millis() / 1000UL, WATCHDOG_MIN_UPTIME / 1000UL);
+                    warnedGuard = true;
+                }
+            } else {
+                logbuf::writef("WATCHDOG fire #%lu: heap fragmented %lu s (maxBlock=%u B, free=%u B, uptime=%lu s) — ESP.restart()",
+                               wdArmCount, (millis() - lowHeapStartedMs) / 1000UL,
+                               maxBlock, freeheap, millis() / 1000UL);
+                delay(150);  // let logbuf flush before restart
+                ESP.restart();
+            }
+        }
+    } else if (lowHeapStartedMs != 0) {
+        logbuf::writef("WATCHDOG disarm #%lu: heap recovered (maxBlock=%u B after %lu s)",
+                       wdArmCount, maxBlock, (millis() - lowHeapStartedMs) / 1000UL);
+        lowHeapStartedMs = 0;
+    }
+
+
     if(gotIP_flag) gotIP();
     if(disconnected_flag) startSoftAp();
+
+    // Boot watchdog disabled while debugging setup-time hang.
     // We need this self-destructing info several times, so save it on the stack
     bool newData = bwc->newData();
     // Fiddle with the pump computer
@@ -351,14 +471,86 @@ void startWiFi()
     BWC_YIELD;
 }
 
+// Parse a BSSID string like "AA:BB:CC:DD:EE:FF" into a 6-byte buffer.
+// Returns true on success; on failure leaves the buffer untouched and
+// the caller falls back to non-pinned WiFi.begin().
+static bool parseBssidString(const String &bssidStr, uint8_t out[6])
+{
+    if (bssidStr.length() != 17) return false;
+    for (int i = 0; i < 6; i++) {
+        int hi = i * 3;
+        int lo = hi + 1;
+        char c0 = bssidStr[hi];
+        char c1 = bssidStr[lo];
+        auto nib = [](char c) -> int {
+            if (c >= '0' && c <= '9') return c - '0';
+            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+            return -1;
+        };
+        int n0 = nib(c0), n1 = nib(c1);
+        if (n0 < 0 || n1 < 0) return false;
+        out[i] = (uint8_t)((n0 << 4) | n1);
+    }
+    return true;
+}
+
 void wifi_manual_reconnect()
 {
+    // ESP8266 workaround stack for picky APs (Vodafone Ultrahub Smart
+    // Connect etc.). Each knob is low-yield alone, combined they often
+    // unlock association.
+    //
+    //   1. WiFi.persistent(false) — don't write creds to flash via the
+    //      SDK; avoids stale-state retry loops on failed attempts
+    //   2. WiFi.disconnect() — drop any stale association (no `true`
+    //      arg — that would also power-cycle the modem, and the
+    //      following setPhyMode/setSleepMode on a powered-off modem
+    //      crashed the device on this ESP8266 core. Default disconnect
+    //      keeps the modem on, which is what we want)
+    //   3. WiFi.setPhyMode(WIFI_PHY_MODE_11G) — skip 11n MCS rate
+    //      negotiation, which is buggy on ESP8266 vs newer APs
+    //   4. WiFi.setSleepMode(WIFI_NONE_SLEEP) — keep radio fully awake;
+    //      some APs deauth a STA that goes to power-save too quickly
+    WiFi.persistent(false);
+    WiFi.disconnect();
+    delay(100);
+    WiFi.setPhyMode(WIFI_PHY_MODE_11G);
+    WiFi.setSleepMode(WIFI_NONE_SLEEP);
+
     /* Connect in station mode to the AP given (your router/ap) */
     if (wifi_info->enableAp)
     {
         BWC_LOG_P(PSTR("WiFi > using WiFi configuration with SSID %s\n"), wifi_info->apSsid.c_str());
 
-        WiFi.begin(wifi_info->apSsid.c_str(), wifi_info->apPwd.c_str());
+        // BSSID pin — if the user has selected a specific AP MAC from
+        // the scan UI (mesh-router case), use the 4-arg WiFi.begin so
+        // the driver doesn't roam to a worse-RSSI AP that shares the
+        // SSID. channel=0 means "auto-detect channel for this BSSID."
+        uint8_t bssid[6];
+        if (wifi_info->apBssid.length() == 17 &&
+            parseBssidString(wifi_info->apBssid, bssid))
+        {
+            BWC_LOG_P(PSTR("WiFi > pinning to BSSID %s\n"), wifi_info->apBssid.c_str());
+            logbuf::writef("WiFi > BEGIN ssid='%s' bssid=%s pwd_len=%u  heap=%u  mode=11G  sleep=NONE",
+                           wifi_info->apSsid.c_str(),
+                           wifi_info->apBssid.c_str(),
+                           (unsigned)wifi_info->apPwd.length(),
+                           ESP.getFreeHeap());
+            WiFi.begin(wifi_info->apSsid.c_str(),
+                       wifi_info->apPwd.c_str(),
+                       0,        // channel — 0 = auto
+                       bssid,
+                       true);    // connect immediately
+        }
+        else
+        {
+            logbuf::writef("WiFi > BEGIN ssid='%s' bssid=(auto) pwd_len=%u  heap=%u  mode=11G  sleep=NONE",
+                           wifi_info->apSsid.c_str(),
+                           (unsigned)wifi_info->apPwd.length(),
+                           ESP.getFreeHeap());
+            WiFi.begin(wifi_info->apSsid.c_str(), wifi_info->apPwd.c_str());
+        }
         // checkWifi_ticker->attach(2.0, checkWiFi_ISR);
         BWC_LOG_P(PSTR("WiFi > AP info loaded. Waiting for connection ...\n"), 0);
     }
@@ -612,6 +804,13 @@ void startHttpServer()
     {
         // HeapSelectIram ephemeral;
         server = new ESP8266WebServer(80);
+        // ESP8266WebServer only retains a few standard request headers
+        // by default (Host etc.) — anything else read via hasHeader()
+        // returns false unless explicitly registered here. Cookie is
+        // load-bearing for the auth flow in webauth.cpp; without this
+        // call the auth gate would loop back to /login.html forever
+        // because isAuthenticated() can never see the session cookie.
+        server->collectHeaders(F("Cookie"));
         /* if you want a simple auth you can do something like this for every page you want to "protect" */
         // server->on(F("/"), []() {
         //     if (!server->authenticate("user", "pswd")) {
@@ -630,6 +829,14 @@ void startHttpServer()
         server->on(F("/getwifi/"), handleGetWifi);
         server->on(F("/setwifi/"), handleSetWifi);
         server->on(F("/resetwifi/"), handleResetWifi);
+        server->on(F("/scanwifi/"), handleScanWifi);
+        server->on(F("/logs/"), handleLogs);
+        // Auth — see Code/src/webauth.{h,cpp}. Cookie-based session,
+        // single password (default "spa"), site-wide lockout after 5
+        // failed attempts. Every other route in this block calls
+        // webauth::requireAuth() at the top of its handler.
+        server->on(F("/login"),  HTTP_POST, webauth::handleLoginPost);
+        server->on(F("/logout"), HTTP_POST, webauth::handleLogout);
         server->on(F("/getmqtt/"), handleGetMqtt);
         server->on(F("/setmqtt/"), handleSetMqtt);
         server->on(F("/dir/"), handleDir);
@@ -643,6 +850,7 @@ void startHttpServer()
         server->on(F("/restart/"), handleRestart);
         server->on(F("/metrics"), handlePrometheusMetrics);  //prometheus metrics
         server->on(F("/info/"), handleESPInfo);
+        server->on(F("/api/watchdog-status"), HTTP_POST, handleWatchdogStatus);
         server->on(F("/sethardware/"), handleSetHardware);
         server->on(F("/gethardware/"), handleGetHardware);
         server->on(F("/debug-on/"), [](){bwc->BWC_DEBUG = true; server->send(200, F("text/plain"), "ok");});
@@ -700,6 +908,7 @@ void preparefortest()
 
 void handleInputs()
 {
+    if (!webauth::requireAuth()) return;
     server->setContentLength(CONTENT_LENGTH_UNKNOWN);
     server->send(200, F("text/plain"), "wait<br>");
 
@@ -751,6 +960,7 @@ void handleInputs()
 
 void handleHWtest()
 {
+    if (!webauth::requireAuth()) return;
     server->setContentLength(CONTENT_LENGTH_UNKNOWN);
     server->send(200, F("text/plain"), "");
 
@@ -910,12 +1120,28 @@ bool handleFileRead(String path)
         path += F("index.html");
     }
     // deny reading credentials
-    if (path.equalsIgnoreCase("/mqtt.json") || path.equalsIgnoreCase("/wifi.json"))
+    if (path.equalsIgnoreCase("/mqtt.json") || path.equalsIgnoreCase("/wifi.json") ||
+        path.equalsIgnoreCase("/auth.json"))
     {
         server->send(403, F("text/plain"), F("Permission denied."));
         // Serial.println(F("HTTP > file reading denied (credentials)."));
         pause_all(false);
         return false;
+    }
+    // Auth gate — only on HTML page requests. Static assets (.css, .js,
+    // .png, .svg, .ico, fonts) pass through without auth so the login
+    // page itself can load its CSS/JS. The auth-routes (login.html
+    // itself, /login, /logout) are also exempt — see isAuthRouteUri.
+    // Sensitive *.json files are already 403'd above so we don't gate
+    // those here either.
+    bool isHtml = path.endsWith(F(".html")) || path.endsWith(F(".html.gz"));
+    if (isHtml && !webauth::isAuthRouteUri(path) && !webauth::requireAuth())
+    {
+        // requireAuth() already sent the redirect to /login.html.
+        // Return true so the caller (handleNotFound) doesn't also
+        // send a 404 on top.
+        pause_all(false);
+        return true;
     }
     String contentType = getContentType(path);                  // Get the MIME type
     String pathWithGz = path + ".gz";
@@ -945,6 +1171,11 @@ bool handleFileRead(String path)
  */
 bool checkHttpPost(HTTPMethod method)
 {
+    // Auth gate FIRST — never leak a "405 Method not allowed" response
+    // to an unauthenticated client (gives away that an endpoint exists).
+    // requireAuth() sends the 401 or 302 itself on failure; we just need
+    // to bail out of the handler.
+    if (!webauth::requireAuth()) return false;
     if (method != HTTP_POST)
     {
         server->send(405, F("text/plain"), F("Method not allowed."));
@@ -1298,6 +1529,9 @@ void loadWifi()
     if(doc.containsKey(F("enableWM"))) wifi_info->enableWmApFallback = doc[F("enableWM")];
     wifi_info->apSsid = doc[F("apSsid")].as<String>();
     wifi_info->apPwd = doc[F("apPwd")].as<String>();
+    // apBssid added 2026-06-01 — backwards-compatible with wifi.json files
+    // written by older firmwares (missing key → empty string → no pin).
+    if (doc.containsKey(F("apBssid"))) wifi_info->apBssid = doc[F("apBssid")].as<String>();
 
     wifi_info->enableStaticIp4 = doc[F("enableStaticIp4")];
     String s(30);
@@ -1329,6 +1563,7 @@ void saveWifi()
     doc[F("enableWM")] = wifi_info->enableWmApFallback;
     doc[F("apSsid")] = wifi_info->apSsid;
     doc[F("apPwd")] = wifi_info->apPwd;
+    doc[F("apBssid")] = wifi_info->apBssid;
     doc[F("enableStaticIp4")] = wifi_info->enableStaticIp4;
     doc[F("ip4Address")] = wifi_info->ip4Address_str;
     doc[F("ip4Gateway")] = wifi_info->ip4Gateway_str;
@@ -1358,10 +1593,43 @@ void handleGetWifi()
     doc[F("enableAp")] = wifi_info->enableAp;
     doc[F("enableWM")] = wifi_info->enableWmApFallback;
     doc[F("apSsid")] = wifi_info->apSsid;
+    doc[F("apBssid")] = wifi_info->apBssid;
     doc[F("apPwd")] = F("<enter password>");
     if (!hidePasswords)
     {
         doc[F("apPwd")] = wifi_info->apPwd;
+    }
+
+    // Live connection status — surfaced to the UI so users can confirm
+    // the device actually joined their home WiFi after Save+Restart,
+    // and so we can diagnose "thought I connected but it didn't" cases
+    // without needing serial access (which on this adapter is wired to
+    // the spa's CIO/DSP, not USB). See also ADR-007-style note in the
+    // README of the fork.
+    JsonObject st = doc.createNestedObject(F("status"));
+    wl_status_t wlst = WiFi.status();
+    st[F("wifiStatus")]    = (int)wlst;
+    st[F("connected")]     = wlst == WL_CONNECTED;
+    st[F("mode")]          = (WiFi.getMode() == WIFI_AP)     ? "AP"
+                           : (WiFi.getMode() == WIFI_STA)    ? "STA"
+                           : (WiFi.getMode() == WIFI_AP_STA) ? "AP+STA"
+                           : "OFF";
+    if (wlst == WL_CONNECTED) {
+        st[F("ssid")]      = WiFi.SSID();
+        st[F("bssid")]     = WiFi.BSSIDstr();
+        st[F("rssi")]      = WiFi.RSSI();
+        st[F("channel")]   = WiFi.channel();
+        st[F("ip")]        = WiFi.localIP().toString();
+        st[F("gateway")]   = WiFi.gatewayIP().toString();
+        st[F("subnet")]    = WiFi.subnetMask().toString();
+        st[F("dns")]       = WiFi.dnsIP().toString();
+        st[F("mac")]       = WiFi.macAddress();
+    }
+    // Always include softAP info — useful when the user is HITTING this
+    // endpoint via the softAP and wants to confirm it's actually live.
+    if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+        st[F("apIp")]      = WiFi.softAPIP().toString();
+        st[F("apClients")] = WiFi.softAPgetStationNum();
     }
 
     doc[F("enableStaticIp4")] = wifi_info->enableStaticIp4;
@@ -1402,6 +1670,7 @@ void handleSetWifi()
     if(doc.containsKey("enableWM")) wifi_info->enableWmApFallback = doc[F("enableWM")];
     wifi_info->apSsid = doc[F("apSsid")].as<String>();
     wifi_info->apPwd = doc[F("apPwd")].as<String>();
+    if (doc.containsKey(F("apBssid"))) wifi_info->apBssid = doc[F("apBssid")].as<String>();
 
     wifi_info->enableStaticIp4 = doc[F("enableStaticIp4")];
     wifi_info->ip4Address_str = doc[F("ip4Address")].as<String>();
@@ -1416,6 +1685,104 @@ void handleSetWifi()
     server->send(200, F("text/plain"), "");
 }
 
+/**
+ * response for /scanwifi/
+ * Runs a synchronous WiFi scan and returns a JSON array of nearby APs.
+ * Each entry: { ssid, bssid, rssi, channel, secure }.
+ *
+ *   • Sorted by RSSI descending (strongest signal first).
+ *   • secure = true for any encryption mode other than OPEN.
+ *   • Duplicate SSIDs are preserved (that's exactly what mesh users need
+ *     to see — multiple BSSIDs sharing one SSID, with different RSSI).
+ *
+ * Synchronous scan blocks the main loop for ~2 s. Acceptable here because
+ * the user explicitly clicks "Scan", but don't auto-invoke this from any
+ * periodic task — it'd freeze the spa command queue while running.
+ */
+void handleScanWifi()
+{
+    if (!webauth::requireAuth()) return;
+    DynamicJsonDocument doc(2048);
+    JsonArray nets = doc.createNestedArray(F("networks"));
+
+    // ESP8266 scanning gotchas:
+    //   • pure AP mode can't scan — need STA or AP+STA. The user is
+    //     hitting this via the softAP, so the device IS in AP+STA, but
+    //     set it explicitly in case some earlier code path flipped it.
+    //   • a leftover scan result from a previous attempt makes the next
+    //     call return -1 (WIFI_SCAN_RUNNING) forever. scanDelete() clears
+    //     that state.
+    //   • when the STA isn't connected, the scan still works — the
+    //     hardware doesn't need an association to listen for beacons.
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.scanDelete();
+    BWC_YIELD;
+
+    int n = WiFi.scanNetworks(false /* async */, true /* show hidden */);
+    if (n < 0) {
+        // Surface the real error code so we can tell -1 (running) from
+        // -2 (failed). Also include the free-heap so we can diagnose
+        // the OOM case if it ever crops up — scan allocates ~5 KB transiently.
+        char errBuf[96];
+        snprintf(errBuf, sizeof(errBuf),
+                 "WiFi.scanNetworks() returned %d (heap=%u)",
+                 n, (unsigned)ESP.getFreeHeap());
+        doc[F("error")] = errBuf;
+        String json;
+        serializeJson(doc, json);
+        server->send(500, F("application/json"), json);
+        return;
+    }
+
+    // Collect indices and sort by RSSI descending. Avoids ArduinoJson's
+    // shuffle quirks if we tried to sort the array post-fill.
+    int order[32];
+    int kept = (n < 32) ? n : 32;
+    for (int i = 0; i < kept; i++) order[i] = i;
+    for (int i = 0; i < kept - 1; i++) {
+        for (int j = i + 1; j < kept; j++) {
+            if (WiFi.RSSI(order[j]) > WiFi.RSSI(order[i])) {
+                int t = order[i]; order[i] = order[j]; order[j] = t;
+            }
+        }
+    }
+
+    for (int k = 0; k < kept; k++) {
+        int i = order[k];
+        JsonObject net = nets.createNestedObject();
+        net[F("ssid")]    = WiFi.SSID(i);
+        net[F("bssid")]   = WiFi.BSSIDstr(i);
+        net[F("rssi")]    = WiFi.RSSI(i);
+        net[F("channel")] = WiFi.channel(i);
+        #ifdef ESP8266
+        net[F("secure")]  = WiFi.encryptionType(i) != ENC_TYPE_NONE;
+        #else
+        net[F("secure")]  = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+        #endif
+    }
+
+    WiFi.scanDelete();   // Free the scan-result buffer in the WiFi driver.
+
+    String json;
+    json.reserve(256 + kept * 96);
+    serializeJson(doc, json);
+    server->send(200, F("application/json"), json);
+}
+
+/**
+ * response for /logs/
+ * Returns the full in-memory log ring buffer as plain text. Easy to
+ * copy from the browser and paste back into a chat / issue for
+ * debugging. Substitutes for USB serial debug on this hardware.
+ */
+void handleLogs()
+{
+    if (!webauth::requireAuth()) return;
+    String body = logbuf::dump();
+    server->sendHeader(F("Cache-Control"), F("no-store"));
+    server->send(200, F("text/plain; charset=utf-8"), body);
+}
+
 /*
  * response for /resetwifi/
  * do this before giving away the device (be aware of other credentials e.g. MQTT)
@@ -1423,6 +1790,7 @@ void handleSetWifi()
  */
 void handleResetWifi()
 {
+    if (!webauth::requireAuth()) return;
     server->send(200, F("text/html"), F("WiFi connection reset (erase) ..."));
     // Serial.println(F("WiFi connection reset (erase) ..."));
     resetWiFi();
@@ -1492,6 +1860,13 @@ void loadMqtt()
     mqtt_info->mqttClientId = doc[F("mqttClientId")].as<String>();
     mqtt_info->mqttBaseTopic = doc[F("mqttBaseTopic")].as<String>();
     mqtt_info->mqttTelemetryInterval = doc[F("mqttTelemetryInterval")];
+    // haTempUnit added 2026-06-02. Older mqtt.json files won't have it —
+    // .as<String>() returns "null" which we coerce to "C" so existing
+    // installs default sensibly without needing a re-save.
+    {
+      String hu = doc[F("haTempUnit")].as<String>();
+      mqtt_info->haTempUnit = (hu == "F") ? "F" : "C";
+    }
     BWC_YIELD;
 }
 
@@ -1517,6 +1892,7 @@ void saveMqtt()
     doc[F("mqttClientId")] = mqtt_info->mqttClientId;
     doc[F("mqttBaseTopic")] = mqtt_info->mqttBaseTopic;
     doc[F("mqttTelemetryInterval")] = mqtt_info->mqttTelemetryInterval;
+    doc[F("haTempUnit")] = mqtt_info->haTempUnit;
 
     if (serializeJson(doc, file) == 0)
     {
@@ -1548,6 +1924,7 @@ void handleGetMqtt()
     doc[F("mqttClientId")] = mqtt_info->mqttClientId;
     doc[F("mqttBaseTopic")] = mqtt_info->mqttBaseTopic;
     doc[F("mqttTelemetryInterval")] = mqtt_info->mqttTelemetryInterval;
+    doc[F("haTempUnit")] = mqtt_info->haTempUnit;
 
     String json;
     if (serializeJson(doc, json) == 0)
@@ -1598,6 +1975,7 @@ void handleSetMqtt()
  */
 void handleDir()
 {
+    if (!webauth::requireAuth()) return;
     // HeapSelectIram ephemeral;
     String mydir;
     mydir.reserve(128);
@@ -1632,6 +2010,7 @@ void handleDir()
  */
 void handleFileUpload()
 {
+    if (!webauth::requireAuth()) return;
     HTTPUpload& upload = server->upload();
     String path;
     /** a file variable to temporarily store the received file */
@@ -1707,6 +2086,7 @@ void handleFileUpload()
  */
 void handleFileRemove()
 {
+    if (!webauth::requireAuth()) return;
     String path;
     path = server->arg(F("FileToRemove"));
     if (!path.startsWith("/"))
@@ -1740,6 +2120,7 @@ void handleFileRemove()
  */
 void handleRestart()
 {
+    if (!webauth::requireAuth()) return;
     server->send(200, F("text/html"), F("ESP restart ..."));
 
     server->sendHeader(F("Location"), "/");
@@ -1962,6 +2343,7 @@ time_t getBootTime()
 
 void handleESPInfo()
 {
+    if (!webauth::requireAuth()) return;
     #ifdef ESP8266
     char stack;
     uint32_t stacksize = stack_start - &stack;
@@ -2018,6 +2400,54 @@ void handleESPInfo()
     server->sendContent("");
 
     #endif
+}
+
+// /api/watchdog-status — runtime audit endpoint. Returns the current
+// watchdog state so we can see how often it almost-fires (armCount) without
+// it actually restarting. Use this to validate that the thresholds are safe
+// before relying on auto-recovery in production.
+//
+// Fields:
+//   armCount             — how many times the watchdog has armed since boot.
+//                          A healthy device should see 0 most of the time;
+//                          a small non-zero count means transient busy spikes
+//                          dipped below threshold but recovered (good — the
+//                          guard worked). Climbing fast = tune thresholds.
+//   currentlyArmed       — true if max-block is below threshold right now.
+//   armedForS            — how long the current arm has lasted (0 if disarmed).
+//   uptimeS              — millis()/1000.
+//   minUptimeS           — the boot-warmup guard before fires are allowed.
+//   maxBlock             — current largest contiguous free DRAM block.
+//   thresholdBytes       — the trip-point.
+//   timeoutS             — how long fragmented-state must persist to fire.
+//   canFireNow           — uptime guard satisfied, so a fire would proceed if armed.
+//   lastArmedAtUptimeS   — uptime at which the most recent arm happened.
+//   lastArmedMaxBlock    — max-block snapshot at the most recent arm.
+void handleWatchdogStatus()
+{
+    if (!webauth::requireAuth()) return;
+    uint32_t maxBlock = ESP.getMaxFreeBlockSize();
+    unsigned long nowMs = millis();
+    unsigned long armedForS = (lowHeapStartedMs == 0) ? 0UL :
+                              (nowMs - lowHeapStartedMs) / 1000UL;
+    bool canFireNow = (nowMs >= WATCHDOG_MIN_UPTIME);
+
+    String body;
+    body.reserve(320);
+    body  = F("{\"armCount\":");        body += wdArmCount;
+    body += F(",\"currentlyArmed\":");  body += (lowHeapStartedMs != 0) ? F("true") : F("false");
+    body += F(",\"armedForS\":");       body += armedForS;
+    body += F(",\"uptimeS\":");         body += (nowMs / 1000UL);
+    body += F(",\"minUptimeS\":");      body += (WATCHDOG_MIN_UPTIME / 1000UL);
+    body += F(",\"maxBlock\":");        body += maxBlock;
+    body += F(",\"thresholdBytes\":");  body += WATCHDOG_MAXBLOCK_THRESHOLD;
+    body += F(",\"timeoutS\":");        body += (WATCHDOG_LOW_HEAP_TIMEOUT / 1000UL);
+    body += F(",\"canFireNow\":");      body += canFireNow ? F("true") : F("false");
+    body += F(",\"lastArmedAtUptimeS\":"); body += (wdLastArmedAtMs / 1000UL);
+    body += F(",\"lastArmedMaxBlock\":"); body += wdLastArmedMaxBlock;
+    body += F("}");
+
+    server->send(200, F("application/json"), body);
 }
 
 void setTemperatureFromSensor()

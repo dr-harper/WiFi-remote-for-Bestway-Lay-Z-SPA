@@ -49,6 +49,16 @@ bool send_mqtt_cfg_needed = false;
 bool gotIP_flag = false;
 bool disconnected_flag = false;
 
+// Boot watchdog — if neither WiFi STA nor softAP is up within
+// BOOT_GUARD_SECONDS of boot, hard-restart. Catches "stuck at boot"
+// failures (notably the residual state we sometimes see after a
+// LittleFS uploadfs that leaves the WiFi stack wedged). The HW
+// watchdog only fires when the main loop hangs; this fires when the
+// loop is healthy but WiFi never comes up.
+Ticker* bootGuardTicker = nullptr;
+volatile bool bootGuardFiredFlag = false;
+constexpr float BOOT_GUARD_SECONDS = 60.0f;
+
 int periodicTimerInterval = 60;
 sWifi_info* wifi_info;
 
@@ -125,6 +135,8 @@ void saveWifi();
 void handleGetWifi();
 void handleSetWifi();
 void handleResetWifi();
+void handleScanWifi();
+void handleLogs();
 void resetWiFi();
 void loadMqtt();
 void saveMqtt();
@@ -143,6 +155,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length);
 void mqttConnect();
 time_t getBootTime();
 void handleESPInfo();
+void handleWatchdogStatus();
 void setTemperatureFromSensor();
 void setupHA();
 void handlePrometheusMetrics();

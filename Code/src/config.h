@@ -150,6 +150,10 @@ struct sMQTT_info
     String mqttClientId;
     String mqttBaseTopic;
     bool useMqtt;
+    // HA climate-entity temperature unit. "C" or "F" (literal strings).
+    // Drives ha.hpp setupHA() — picks which TMPx/TGTx field to template
+    // and which min/max range the climate card shows. Default "C" for UK.
+    String haTempUnit = "C";
 };
 
 sMQTT_info* mqtt_info;
