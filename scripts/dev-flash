@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# Full firmware + LittleFS flash WITH credential preservation.
+#
+# Wraps `pio run -t uploadfs` so the device comes up on home WiFi
+# automatically, no manual re-onboarding via the captive AP each time.
+#
+# How it works:
+#   1. Reads dev-config.json (gitignored, your local credentials)
+#   2. Writes wifi.json + auth.json into Code/data_base/ — that dir is
+#      already wired into gzip_littlefs.py to be merged into the
+#      LittleFS image at build time
+#   3. Runs `pio run -t upload`   (firmware)  and / or
+#           `pio run -t uploadfs` (filesystem with the cached creds in it)
+#   4. Cleans up the cached files from data_base/ after the build
+#      (so they don't leak into git or get re-used unintentionally)
+#
+# Usage:
+#   ./scripts/dev-flash             — flash both firmware + LittleFS
+#   ./scripts/dev-flash --fs-only   — LittleFS only (faster, when no .cpp changes)
+#   ./scripts/dev-flash --fw-only   — firmware only (no LittleFS touch)
+#   ./scripts/dev-flash --erase     — full chip erase first (nuclear recovery)
+#
+# On first run, prompts to create dev-config.json from your inputs.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+CONFIG="${SPA_DEV_CONFIG:-$ROOT/dev-config.json}"
+DATA_BASE="$ROOT/Code/data_base"
+UPLOAD_PORT="${SPA_UPLOAD_PORT:-/dev/cu.usbserial-210}"
+
+FW_ONLY=0; FS_ONLY=0; ERASE_FIRST=0
+for arg in "$@"; do
+  case "$arg" in
+    --fs-only) FS_ONLY=1 ;;
+    --fw-only) FW_ONLY=1 ;;
+    --erase)   ERASE_FIRST=1 ;;
+    -h|--help)
+      sed -n '3,28p' "$0"; exit 0 ;;
+  esac
+done
+
+# 1. Ensure config exists. First-run interactive bootstrap.
+if [ ! -f "$CONFIG" ]; then
+  echo "First run — no $CONFIG. Let's create one (gitignored)."
+  read -r -p "  WiFi SSID:         " SSID
+  read -r -p "  WiFi password:     " WPASS
+  read -r -p "  WiFi BSSID (optional, blank for auto): " BSSID
+  read -r -p "  Web auth password (blank = 'spa'): " AUTHPASS
+  AUTHPASS="${AUTHPASS:-spa}"
+  cat > "$CONFIG" <<EOF
+{
+  "apSsid":  "$SSID",
+  "apPwd":   "$WPASS",
+  "apBssid": "$BSSID",
+  "authPassword": "$AUTHPASS",
+  "enableAp": true,
+  "enableWmApFallback": true
+}
+EOF
+  echo "  → wrote $CONFIG"
+fi
+
+# 2. Stage credentials into Code/data_base/.
+#    gzip_littlefs.py's copy_gzip_data() merges any data_base/ files
+#    into the LittleFS image during pio's $BUILD_DIR/littlefs.bin step.
+mkdir -p "$DATA_BASE"
+python3 - "$CONFIG" "$DATA_BASE" <<'PY'
+import json, sys, os, pathlib
+cfg_path, base = sys.argv[1], sys.argv[2]
+cfg = json.load(open(cfg_path))
+
+wifi = {
+  "enableAp":         cfg.get("enableAp", True),
+  "enableWM":         cfg.get("enableWmApFallback", True),
+  "apSsid":           cfg["apSsid"],
+  "apPwd":            cfg["apPwd"],
+  "apBssid":          cfg.get("apBssid", ""),
+  "enableStaticIp4":  False,
+  "ip4Address":       "",
+  "ip4Gateway":       "",
+  "ip4Subnet":        "",
+  "ip4DnsPrimary":    "",
+  "ip4DnsSecondary":  "",
+  "ip4NTP":           "pool.ntp.org"
+}
+pathlib.Path(base, "wifi.json").write_text(json.dumps(wifi))
+print(f"  → staged wifi.json (ssid={cfg['apSsid']}, bssid={cfg.get('apBssid','(auto)')})")
+
+# auth.json — the firmware reads "password" + "session". We pre-set
+# password from config; leave session blank so the firmware generates a
+# fresh token on first boot. (Pre-baking a session would also work but
+# storing tokens on the dev machine is unnecessary.)
+auth = {"password": cfg.get("authPassword", "spa"), "session": ""}
+pathlib.Path(base, "auth.json").write_text(json.dumps(auth))
+print(f"  → staged auth.json (password={cfg.get('authPassword','spa')})")
+PY
+
+# Make sure we clean up even if pio fails
+cleanup() {
+  rm -f "$DATA_BASE/wifi.json" "$DATA_BASE/auth.json"
+}
+trap cleanup EXIT
+
+export PATH="$HOME/.local/bin:$PATH"
+cd "$ROOT/Code"
+
+if [ "$ERASE_FIRST" = "1" ]; then
+  echo
+  echo "=== Full chip erase ==="
+  pio run -e nodemcuv2 -t erase --upload-port "$UPLOAD_PORT" 2>&1 \
+    | grep -E "Erasing|completed|SUCCESS|FAILED" | tail -2
+fi
+
+if [ "$FS_ONLY" = "0" ]; then
+  echo
+  echo "=== Flashing firmware ==="
+  pio run -e nodemcuv2 -t upload --upload-port "$UPLOAD_PORT" 2>&1 \
+    | grep -E "Wrote|verified|SUCCESS|FAILED|error:" | tail -3
+fi
+
+if [ "$FW_ONLY" = "0" ]; then
+  echo
+  echo "=== Flashing LittleFS (with baked-in creds from dev-config.json) ==="
+  pio run -e nodemcuv2 -t uploadfs --upload-port "$UPLOAD_PORT" 2>&1 \
+    | grep -E "Wrote|verified|SUCCESS|FAILED" | tail -3
+fi
+
+echo
+echo "✅ Flashed. Device should come up on '$(jq -r .apSsid "$CONFIG")' within ~15 s."
+echo "   No manual onboarding needed — wifi.json was pre-baked into the partition."

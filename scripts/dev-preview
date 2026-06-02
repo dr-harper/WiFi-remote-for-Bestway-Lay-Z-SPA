@@ -1,0 +1,234 @@
+#!/usr/bin/env python3
+"""
+Local preview server for the spa UI. Renders the template-engine pages
+in real-time (rebuild on every request) and mocks the device's /api
+endpoints with synthetic JSON so the JS doesn't error out.
+
+Run:
+  ./scripts/dev-preview              # serves on localhost:8000
+  ./scripts/dev-preview --port 8123  # custom port
+
+Then open http://localhost:8000/login.html (or any other page).
+Edit any HTML / CSS / JS in webInterface/ and refresh — no device round-trip.
+
+The synthetic responses come from KNOWN_RESPONSES below. Modify them
+to test different states (connected vs disconnected, populated cmd
+queue, etc.) without needing a real spa.
+"""
+import argparse
+import json
+import mimetypes
+import os
+import sys
+import tempfile
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+WEBIF = os.path.join(ROOT, "Code", "webInterface")
+# build.py lives inside webInterface/ and imports as `webInterface.build`.
+# Adjust sys.path so we can import it without a package install.
+sys.path.insert(0, os.path.join(ROOT, "Code"))
+from webInterface.build import build_web_interface   # noqa: E402
+
+# ─── Synthetic data ──────────────────────────────────────────────────
+# Tune these to preview different device states without flashing.
+
+KNOWN_RESPONSES = {
+    "/getwifi/": {
+        "enableAp":         True,
+        "enableWM":         True,
+        "apSsid":           "Badgers2",
+        "apBssid":          "94:F7:BE:33:5D:14",
+        "apPwd":            "<enter password>",
+        "enableStaticIp4":  False,
+        "ip4Address":       "", "ip4Gateway": "", "ip4Subnet": "",
+        "ip4DnsPrimary":    "", "ip4DnsSecondary": "",
+        "ip4NTP":           "pool.ntp.org",
+        "status": {
+            "connected":  True,
+            "wifiStatus": 3, "mode": "STA",
+            "ssid":       "Badgers2",
+            "bssid":      "94:F7:BE:33:5D:14",
+            "rssi":       -58, "channel": 1,
+            "ip":         "192.168.1.235",
+            "gateway":    "192.168.1.1",
+            "subnet":     "255.255.255.0",
+            "dns":        "192.168.1.1",
+            "mac":        "A4:CF:12:BE:F5:AE"
+        }
+    },
+    "/getmqtt/": {
+        "enableMqtt": False, "mqttHost": "192.168.0.20", "mqttPort": 1883,
+        "mqttUsername": "", "mqttPassword": "<enter password>",
+        "mqttClientId": "layzspa", "mqttBaseTopic": "layzspa",
+        "mqttTelemetryInterval": 60
+    },
+    "/getconfig/": {
+        "PRICE": 0.30, "FREPI": 60, "FRINI": 7, "FCLEI": 20, "CLINT": 7,
+        "AUDIO": True, "NOTIFY": True, "NOTIFTIME": 32, "RESTORE": False,
+        "REBOOTTIME": 0, "REBOOTINFO": "preview", "VTCAL": False,
+        "LCK": True, "TMR": True, "AIR": True, "UNT": True, "HTR": True,
+        "FLT": True, "DN":  True, "UP":  True, "PWR": True, "HJT": True
+    },
+    "/getwebconfig/": {
+        "SST": True, "SSD": True, "SSC": True, "SSB": True,
+        "SSTIM": True, "SSTOT": True, "UCS": False
+    },
+    "/gethardware/": {
+        "cio": "0", "dsp": "0", "pcb": "v1",
+        "hasTempSensor": "0",
+        "pins": [7, 2, 1, 5, 4, 3, 6, 0],
+        "pwr_levels": {"override": False, "heater_stage1": 1000,
+                       "heater_stage2": 2000, "pump": 50, "idle": 5,
+                       "air": 800, "jet": 800}
+    },
+    "/getcommands/": {"LEN": 0, "CMD": [], "VALUE": [], "XTIME": [], "INTERVAL": [], "TXT": []},
+}
+
+SCAN_NETWORKS_RESPONSE = {
+    "networks": [
+        {"ssid": "Badgers2", "bssid": "94:F7:BE:33:5D:14", "rssi": -58, "channel": 1,  "secure": True},
+        {"ssid": "Badgers",  "bssid": "94:F7:BE:33:5D:15", "rssi": -60, "channel": 1,  "secure": True},
+        {"ssid": "Badgers",  "bssid": "94:F7:BE:33:9F:13", "rssi": -71, "channel": 6,  "secure": True},
+        {"ssid": "Guest",    "bssid": "94:F7:BE:33:5D:16", "rssi": -65, "channel": 11, "secure": False},
+        {"ssid": "Neighbour", "bssid": "B4:FB:E4:C2:01:99", "rssi": -82, "channel": 11, "secure": True},
+    ]
+}
+
+LOG_SAMPLE = """\
+[211ms] === BOOT === freeHeap=42320, FW=preview-mode
+[840ms] WiFi > BEGIN ssid='Badgers2' bssid=(auto) pwd_len=12  heap=41856  mode=11G  sleep=NONE
+[6660ms] WiFi > GOT IP 192.168.1.235  gw=192.168.1.1  rssi=-58  ssid='Badgers2'  bssid=94:F7:BE:33:5D:14  ch=1
+[6720ms] boot-guard armed for 60 s
+[12120ms] BOOT-GUARD: ok (sta=1 ap=0) — disarming
+"""
+
+# ─── Build cache ─────────────────────────────────────────────────────
+
+class _Cache:
+    pages_dir = None
+
+CACHE = _Cache()
+
+def rebuild():
+    """Run the template engine; output goes to a temp dir we serve from.
+    Suppresses build.py's per-template print spam (one line per page per
+    request would flood the preview console). Errors still print."""
+    import io, contextlib
+    if CACHE.pages_dir is None:
+        CACHE.pages_dir = tempfile.mkdtemp(prefix="spa-preview-")
+        print(f"  preview dir: {CACHE.pages_dir}")
+    cwd = os.getcwd()
+    os.chdir(WEBIF)
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            build_web_interface(CACHE.pages_dir, WEBIF)
+    finally:
+        os.chdir(cwd)
+
+
+# ─── HTTP server ─────────────────────────────────────────────────────
+
+class PreviewHandler(SimpleHTTPRequestHandler):
+
+    # Always rebuild from source on every request — slower but means
+    # CSS/HTML edits are reflected immediately on browser refresh.
+    def do_GET(self): rebuild(); self._dispatch()
+    def do_POST(self): rebuild(); self._dispatch()
+
+    def _dispatch(self):
+        url = urlparse(self.path)
+        path = url.path.rstrip("/")
+
+        # 1. Synthetic API endpoints
+        if path in [k.rstrip("/") for k in KNOWN_RESPONSES]:
+            # Look up by both with-slash and without-slash variants.
+            key = path if path in KNOWN_RESPONSES else path + "/"
+            self._json(KNOWN_RESPONSES[key])
+            return
+        if path == "/scanwifi":
+            self._json(SCAN_NETWORKS_RESPONSE)
+            return
+        if path == "/logs":
+            self._send(200, "text/plain", LOG_SAMPLE.encode())
+            return
+        if path == "/login":
+            # Set a fake session cookie + 302 to /
+            self.send_response(302)
+            self.send_header("Set-Cookie", "session=preview; Path=/")
+            self.send_header("Location", "/")
+            self.end_headers()
+            return
+        if path == "/logout":
+            self.send_response(302); self.send_header("Location", "/login.html"); self.end_headers()
+            return
+        if path == "/restart":
+            self._send(200, "text/plain", b"restart (preview no-op)")
+            return
+        # POSTs to /setxxx/, /addcommand/, etc — pretend they succeeded
+        if path.startswith("/set") or path.startswith("/add") or \
+           path.startswith("/edit") or path.startswith("/del") or \
+           path.startswith("/cmdq_file") or path.startswith("/reset"):
+            self._send(200, "text/plain", b"ok")
+            return
+
+        # 2. Static files (rendered HTML + static/ assets)
+        # Map "/" → "/index.html"
+        if path in ("", "/"):
+            path = "/index.html"
+        # Strip .gz suffix — the build writes non-gz files; the device
+        # serves .gz to save flash, but for preview we have raw HTML.
+        if path.endswith(".gz"):
+            path = path[:-3]
+
+        fs_path = os.path.join(CACHE.pages_dir, path.lstrip("/"))
+        if os.path.isfile(fs_path):
+            with open(fs_path, "rb") as f:
+                body = f.read()
+            ctype = mimetypes.guess_type(fs_path)[0] or "application/octet-stream"
+            self._send(200, ctype, body)
+            return
+
+        self._send(404, "text/plain", f"Not found: {path}".encode())
+
+    def _json(self, obj):
+        self._send(200, "application/json", json.dumps(obj).encode())
+
+    def _send(self, code, ctype, body):
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    # Quiet down the default per-request log line; only print POST + errors
+    def log_message(self, fmt, *args):
+        msg = fmt % args
+        if "GET /favicon" in msg or "GET /static" in msg:
+            return
+        print("  " + msg)
+
+
+def main():
+    p = argparse.ArgumentParser(description="Spa UI preview server")
+    p.add_argument("--port", type=int, default=8000)
+    p.add_argument("--host", default="127.0.0.1")
+    args = p.parse_args()
+
+    print(f"=== Spa UI preview ===")
+    print(f"  webInterface:  {WEBIF}")
+    rebuild()
+    print(f"  serving on:    http://{args.host}:{args.port}/")
+    print(f"  open:          http://{args.host}:{args.port}/login.html")
+    print(f"                 (or /index.html, /wifi.html, /config.html, etc.)")
+    print()
+    httpd = HTTPServer((args.host, args.port), PreviewHandler)
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nbye")
+
+if __name__ == "__main__":
+    main()

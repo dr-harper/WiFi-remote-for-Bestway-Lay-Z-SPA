@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+# Per-file OTA upload to the spa device. Bypasses `pio run -t uploadfs`
+# entirely — the partition stays untouched, the device doesn't get
+# wedged, credentials survive.
+#
+# Usage:
+#   ./scripts/dev-push <local-file> [device-host]
+#   ./scripts/dev-push Code/webInterface/pages/index.html
+#   ./scripts/dev-push Code/webInterface/static/main.css 192.168.1.235
+#
+# How it works:
+#   1. Logs into the device (re-uses cached cookie if valid)
+#   2. Gzips the file (gz files served preferentially by handleFileRead)
+#   3. POSTs as multipart to /upload.html with the right filename
+#   4. Device drops the gzipped file straight onto LittleFS
+#
+# Environment:
+#   SPA_HOST       — default 192.168.1.235 (override per-call as 2nd arg)
+#   SPA_PASSWORD   — default 'spa' (the firmware's default)
+#   SPA_COOKIE_JAR — default ~/.spa-cookies
+#   SPA_MIN_HEAP   — default 15000. Pre-flight check on TOTAL free DRAM.
+#                    Coarse signal — fragmentation can wedge async-TCP even
+#                    when this looks healthy.
+#   SPA_MIN_BLOCK  — default 10000. Pre-flight check on the LARGEST
+#                    contiguous free DRAM block. This is what async-TCP +
+#                    handleFileUpload actually need; the truer signal.
+#   SPA_PUSH_DELAY — default 1.5 (seconds). Baseline post-push delay.
+#                    Adaptive: doubled when heap drops >5 KB between pushes,
+#                    restored when it recovers. Set to 0 to disable when
+#                    pushing a single file.
+#   SPA_HEALTH_TIMEOUT — default 5 (seconds). Post-push GET / probe deadline.
+#                    If the server stops responding after an upload, we fail
+#                    the batch immediately rather than queue more pushes into
+#                    a wedged device. Set to 0 to disable.
+#   SPA_HEAP_STATE — default ~/.spa-heap-state. Path where we cache the last
+#                    heap reading for adaptive throttle. Cleared by setting
+#                    to /dev/null.
+
+set -euo pipefail
+
+LOCAL="${1:-}"
+HOST="${2:-${SPA_HOST:-192.168.1.235}}"
+PASSWORD="${SPA_PASSWORD:-spa}"
+COOKIE_JAR="${SPA_COOKIE_JAR:-$HOME/.spa-cookies}"
+MIN_HEAP="${SPA_MIN_HEAP:-15000}"
+MIN_BLOCK="${SPA_MIN_BLOCK:-10000}"
+PUSH_DELAY="${SPA_PUSH_DELAY:-1.5}"
+HEALTH_TIMEOUT="${SPA_HEALTH_TIMEOUT:-5}"
+HEAP_STATE="${SPA_HEAP_STATE:-$HOME/.spa-heap-state}"
+
+if [ -z "$LOCAL" ]; then
+  cat >&2 <<EOF
+usage: $0 <local-file> [device-host]
+  examples:
+    $0 Code/webInterface/pages/index.html
+    $0 Code/webInterface/static/main.css 192.168.1.235
+  env vars: SPA_HOST, SPA_PASSWORD, SPA_COOKIE_JAR
+EOF
+  exit 2
+fi
+if [ ! -f "$LOCAL" ]; then
+  echo "error: $LOCAL not found" >&2
+  exit 2
+fi
+
+# 1. Check whether the cached cookie still works. We test by hitting
+#    /getconfig/ which requires auth; a 200 means we're in, 401/302 means
+#    we need to re-login. (Using a POST endpoint so we don't blow away
+#    the HTML body if logged out — auth redirect comes back as 302.)
+need_login=0
+if [ -f "$COOKIE_JAR" ]; then
+  code=$(curl -sS -o /dev/null -w '%{http_code}' -b "$COOKIE_JAR" \
+              -X POST -m 5 "http://${HOST}/getconfig/" || echo "000")
+  [ "$code" = "200" ] || need_login=1
+else
+  need_login=1
+fi
+
+if [ "$need_login" = "1" ]; then
+  echo "  · logging in to http://${HOST}/login ..."
+  # POST password as form-urlencoded; handler sets the session cookie
+  # via Set-Cookie. -c writes the jar; -L follows redirects.
+  curl -sS -c "$COOKIE_JAR" -m 8 -L -X POST \
+    -d "password=${PASSWORD}" \
+    -o /dev/null \
+    "http://${HOST}/login" || {
+      echo "error: login failed (host unreachable or wrong password)" >&2
+      exit 1
+    }
+fi
+
+# 1b. Pre-flight heap + fragmentation check. /info/ returns plain text;
+#     we parse both "Free Dram Heap" (total) and "Max free Dram block size"
+#     (largest contiguous block). Async-TCP + handleFileUpload need the
+#     contiguous block — that's the signal that actually predicts wedges.
+#     Best-effort: if /info/ times out or doesn't parse, we proceed.
+free_heap=""
+max_block=""
+heap_text=$(curl -sS -b "$COOKIE_JAR" -m 4 "http://${HOST}/info/" 2>/dev/null || true)
+if [ -n "$heap_text" ]; then
+  free_heap=$(printf '%s\n' "$heap_text" | awk -F: '/Free Dram Heap/ {gsub(/[^0-9]/,"",$2); print $2; exit}')
+  max_block=$(printf '%s\n' "$heap_text" | awk -F: '/Max free Dram block size/ {gsub(/[^0-9]/,"",$2); print $2; exit}')
+
+  if [ -n "$free_heap" ] && [ "$free_heap" -lt "$MIN_HEAP" ]; then
+    echo "  ⚠ free DRAM ${free_heap} B below SPA_MIN_HEAP=${MIN_HEAP} — refusing to push" >&2
+    echo "     (heap-fragmented; let the device idle or power-cycle it)" >&2
+    exit 3
+  fi
+  if [ -n "$max_block" ] && [ "$max_block" -lt "$MIN_BLOCK" ]; then
+    echo "  ⚠ largest free block ${max_block} B below SPA_MIN_BLOCK=${MIN_BLOCK} — refusing to push" >&2
+    echo "     (async-TCP needs a contiguous block; this push would likely wedge it)" >&2
+    exit 3
+  fi
+  if [ -n "$free_heap" ] && [ -n "$max_block" ]; then
+    echo "  · heap OK: ${free_heap} B free, ${max_block} B largest block"
+  elif [ -n "$free_heap" ]; then
+    echo "  · heap OK: ${free_heap} B free"
+  fi
+fi
+
+# 1c. Adaptive throttle. If heap dropped >5 KB since the last push, the
+#     device is leaking buffers between pushes and we double the delay.
+#     If it recovered (drop < 1 KB), restore the baseline. State lives in
+#     SPA_HEAP_STATE; cleared by power-cycle or by the user.
+LAST_HEAP=""
+[ -f "$HEAP_STATE" ] && LAST_HEAP=$(cat "$HEAP_STATE" 2>/dev/null)
+if [ -n "$LAST_HEAP" ] && [ -n "$free_heap" ]; then
+  delta=$(( LAST_HEAP - free_heap ))
+  if [ "$delta" -gt 5000 ]; then
+    # bash arithmetic doesn't do floats; awk handles 1.5 * 2 = 3
+    PUSH_DELAY=$(awk -v d="$PUSH_DELAY" 'BEGIN{printf "%.2f", d*2}')
+    echo "  · heap dropped ${delta} B since last push — doubling delay to ${PUSH_DELAY} s"
+  elif [ "$delta" -lt -1000 ]; then
+    echo "  · heap recovered (+$((-delta)) B) — delay back to baseline"
+  fi
+fi
+
+# 2. Decide whether to gzip. handleFileRead serves *.gz preferentially
+#    so we gzip text-y assets. Binary assets (.png, .ico, .jpg) get
+#    uploaded as-is.
+NAME=$(basename "$LOCAL")
+case "$NAME" in
+  *.html|*.css|*.js|*.json|*.ico)
+    TMPF=$(mktemp -t dev-push.XXXXX).gz
+    gzip -9 -c "$LOCAL" > "$TMPF"
+    UPLOAD_FILE="$TMPF"
+    REMOTE_NAME="${NAME}.gz"
+    SIZE_LOCAL=$(wc -c < "$LOCAL" | tr -d ' ')
+    SIZE_GZIP=$(wc -c  < "$TMPF" | tr -d ' ')
+    echo "  · ${NAME}: ${SIZE_LOCAL} → ${SIZE_GZIP} bytes gz ($(( SIZE_GZIP * 100 / SIZE_LOCAL ))%)"
+    CLEANUP_TMP="$TMPF"
+    ;;
+  *)
+    UPLOAD_FILE="$LOCAL"
+    REMOTE_NAME="$NAME"
+    SIZE_LOCAL=$(wc -c < "$LOCAL" | tr -d ' ')
+    echo "  · ${NAME}: ${SIZE_LOCAL} bytes (no gzip)"
+    CLEANUP_TMP=""
+    ;;
+esac
+
+# 3. POST the file. Form field name is irrelevant — handleFileUpload uses
+#    upload.filename to determine the LittleFS path. We force a specific
+#    filename via curl's `;filename=` parameter.
+#
+# Response handling notes:
+#   • handleFileUpload sends `303 See Other` + `Location: success.html`
+#     at UPLOAD_FILE_END (post-redirect-get pattern). 303 IS the success
+#     code here, NOT an error.
+#   • The device sets Content-Length on the 303 response but closes the
+#     socket before sending all those bytes — curl complains about
+#     premature close. We mask that with --max-time + accept 303 as ok.
+echo "  · POST http://${HOST}/upload.html → /${REMOTE_NAME}"
+HTTP_CODE=$(curl -sS -b "$COOKIE_JAR" -m 30 -X POST \
+  -F "file=@${UPLOAD_FILE};filename=${REMOTE_NAME}" \
+  -o /dev/null -w '%{http_code}' \
+  "http://${HOST}/upload.html" 2>/dev/null || true)
+
+[ -n "$CLEANUP_TMP" ] && rm -f "$CLEANUP_TMP"
+
+# Accept any 2xx OR 303 (the firmware's post-upload redirect to success.html).
+case "$HTTP_CODE" in
+  20[0-9]|303)
+    echo "  ✅ uploaded — http://${HOST}/${NAME%.gz} should now serve the new content"
+    ;;
+  *)
+    echo "error: upload returned HTTP ${HTTP_CODE:-(none)}" >&2
+    exit 1
+    ;;
+esac
+
+# 4. Post-push health probe. A wedge shows up as HTTP requests stalling
+#    while pings still respond — the async-TCP thread is alive but its
+#    buffers can't dequeue. A short GET /info/ catches that immediately
+#    rather than letting the next push queue into the wedge.
+if [ "$HEALTH_TIMEOUT" != "0" ]; then
+  probe_code=$(curl -sS -b "$COOKIE_JAR" -m "$HEALTH_TIMEOUT" \
+                    -o /dev/null -w '%{http_code}' \
+                    "http://${HOST}/info/" 2>/dev/null || echo "000")
+  case "$probe_code" in
+    200|302|303)
+      # Capture post-push heap reading for the next adaptive-throttle check.
+      post_text=$(curl -sS -b "$COOKIE_JAR" -m 3 "http://${HOST}/info/" 2>/dev/null || true)
+      if [ -n "$post_text" ]; then
+        post_heap=$(printf '%s\n' "$post_text" | awk -F: '/Free Dram Heap/ {gsub(/[^0-9]/,"",$2); print $2; exit}')
+        [ -n "$post_heap" ] && echo "$post_heap" > "$HEAP_STATE"
+      fi
+      ;;
+    *)
+      echo "  ⚠ post-push health probe failed (HTTP ${probe_code}) — device may be wedging" >&2
+      echo "     refusing further pushes; investigate before retrying" >&2
+      # Clear cached heap so the next push starts from scratch.
+      rm -f "$HEAP_STATE"
+      exit 4
+      ;;
+  esac
+fi
+
+# 5. Throttle. Baseline 1.5 s; doubled above if heap is draining.
+#    Skipped when SPA_PUSH_DELAY=0 (single ad-hoc push).
+if [ "$PUSH_DELAY" != "0" ]; then
+  sleep "$PUSH_DELAY"
+fi
