@@ -5,22 +5,33 @@
 {% endblock %}
 
 {% block top_navigation %}
-{% run use_component("topNavigation", "hwtestinfo") %}
+{% run use_component("topNavigation", "settings") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "settings") %}
 {% endblock %}
 
 {% block content %}
 <section>
+  <div class="card">
+    <h2 data-i18n="section_hwtest">Hardware test instructions</h2>
     <p data-i18n="hwtest_instr1">
-        Prepare to connect the cables to together, but don't do it yet.
+      Prepare to connect the cables together, but don't do it yet.
     </p>
-    <img src="hwtest2.jpg" width="300">
-    <br>
+    <img src="hwtest2.jpg" alt="hardware test setup step 1"
+         style="width:100%;max-width:300px;border-radius:8px;display:block;margin:.75rem 0">
+
     <p data-i18n="hwtest_instr2">
-        Feed +5V and GND to the PCB (red and black wires in the picture). If your board bypasses the 5V from USB
-        to Vin pin you can use USB instead. Don't use both methods!
+      Feed +5V and GND to the PCB (red and black wires in the picture). If your board bypasses the 5V
+      from USB to Vin pin you can use USB instead. Don't use both methods.
     </p>
-    <img src="hwtest1.jpg" width="300">
-    <br><br>
-    <a href="./hwtest/" data-i18n="link_hwtest">Make the test</a>
+    <img src="hwtest1.jpg" alt="hardware test setup step 2"
+         style="width:100%;max-width:300px;border-radius:8px;display:block;margin:.75rem 0">
+
+    <div style="margin-top:1.25rem;text-align:center">
+      <a href="./hwtest/" class="btn btn-primary" data-i18n="link_hwtest">Run the test</a>
+    </div>
+  </div>
 </section>
 {% endblock %}

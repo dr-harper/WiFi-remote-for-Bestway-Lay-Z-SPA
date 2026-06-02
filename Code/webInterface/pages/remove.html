@@ -4,28 +4,28 @@
 <span data-i18n="header_remove">File Remover</span>
 {% endblock %}
 
-
 {% block top_navigation %}
-{% run use_component("topNavigation", "remove") %}
+{% run use_component("topNavigation", "settings") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "settings") %}
 {% endblock %}
 
 {% block content %}
 <section>
-    <p data-i18n="remove_instruction">
-        Use this page to remove a file created on the ESP8266.
+  <div class="card">
+    <h2 data-i18n="section_remove">Remove a file</h2>
+    <p class="card-sub" data-i18n="remove_instruction">
+      Delete a file from the ESP8266's LittleFS partition.
     </p>
-    <table>
-        <tr>
-            <td>
-                <input type="text" id="fileToRemove" placeholder="Enter filename" style="width:100%;">
-            </td>
-            <td>
-                <button id="removeButton" class="button_red" onclick="removeFile()" data-i18n="btn_remove">
-                    Remove
-                </button>
-            </td>
-        </tr>
-    </table>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;margin-top:.75rem">
+      <input type="text" id="fileToRemove" placeholder="Enter filename">
+      <button id="removeButton" class="btn btn-danger" onclick="removeFile()" data-i18n="btn_remove">
+        Remove
+      </button>
+    </div>
+  </div>
 </section>
 {% endblock %}
 

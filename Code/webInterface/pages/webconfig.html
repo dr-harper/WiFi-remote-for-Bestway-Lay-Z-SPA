@@ -5,113 +5,117 @@
 {% endblock %}
 
 {% block top_navigation %}
-{% run use_component("topNavigation", "webconfig") %}
+{% run use_component("topNavigation", "settings") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "settings") %}
 {% endblock %}
 
 {% block header_after_default %}
-<!-- <select> caché pour i18n.js -->
-<select id="lang-select" style="display:none;">
+<!-- Hidden i18n-engine target; the flag buttons below set its value. -->
+<select id="lang-select" style="display:none">
     <option value="en-EN">English</option>
     <option value="fr-FR">Français</option>
     <option value="es-ES">Español</option>
     <option value="it-IT">Italiano</option>
     <option value="pt-PT">Portugal</option>
-    <option value="de-DE">Deutch</option>
+    <option value="de-DE">Deutsch</option>
 </select>
 {% endblock %}
 
 {% block content %}
-<!-- bloc drapeaux au-dessus des options -->
+
+
+<a class="back-link" href="/config.html">‹ Settings</a>
+
+<!-- ==================== Language ==================== -->
 <section id="language-section">
-    <div id="lang-flags">
-        <span class="flag" data-lang="en-EN" title="English">🇬🇧</span>
-        <span class="flag" data-lang="fr-FR" title="Français">🇫🇷</span>
-        <span class="flag" data-lang="es-ES" title="Español">🇪🇸</span>
-        <span class="flag" data-lang="it-IT" title="Italiano">🇮🇹</span>
-        <span class="flag" data-lang="pt-PT" title="Portugal">🇵🇹</span>
-        <span class="flag" data-lang="de-DE" title="Deutch">🇩🇪</span>
+    <div class="card">
+        <h2 data-i18n="section_language">Language</h2>
+        <p class="card-sub">Click a flag to switch.</p>
+        <div id="lang-flags"
+             style="display:flex;gap:.75rem;font-size:2rem;flex-wrap:wrap">
+            <span class="flag" data-lang="en-EN" title="English"   style="cursor:pointer">🇬🇧</span>
+            <span class="flag" data-lang="fr-FR" title="Français"  style="cursor:pointer">🇫🇷</span>
+            <span class="flag" data-lang="es-ES" title="Español"   style="cursor:pointer">🇪🇸</span>
+            <span class="flag" data-lang="it-IT" title="Italiano"  style="cursor:pointer">🇮🇹</span>
+            <span class="flag" data-lang="pt-PT" title="Portugal"  style="cursor:pointer">🇵🇹</span>
+            <span class="flag" data-lang="de-DE" title="Deutsch"   style="cursor:pointer">🇩🇪</span>
+        </div>
     </div>
 </section>
 
-<!-- section des toggles -->
+<!-- ==================== Section visibility ==================== -->
 <section>
-    <table>
-        <tr>
-            <td data-i18n="show_section_temp">Show section "Temperature"</td>
-            <td>
-                <label class="switch">
-                    <input type="checkbox" id="showSectionTemperature">
-                    <span class="slider round"></span>
-                </label>
-            </td>
-        </tr>
-        <tr>
-            <td data-i18n="show_section_display">Show section "Display"</td>
-            <td>
-                <label class="switch">
-                    <input type="checkbox" id="showSectionDisplay">
-                    <span class="slider round"></span>
-                </label>
-            </td>
-        </tr>
-        <tr>
-            <td data-i18n="show_section_control">Show section "Control"</td>
-            <td>
-                <label class="switch">
-                    <input type="checkbox" id="showSectionControl">
-                    <span class="slider round"></span>
-                </label>
-            </td>
-        </tr>
-        <tr>
-            <td data-i18n="show_section_buttons">Show section "Buttons"</td>
-            <td>
-                <label class="switch">
-                    <input type="checkbox" id="showSectionButtons">
-                    <span class="slider round"></span>
-                </label>
-            </td>
-        </tr>
-        <tr>
-            <td data-i18n="show_section_timer">Show section "Timer"</td>
-            <td>
-                <label class="switch">
-                    <input type="checkbox" id="showSectionTimer">
-                    <span class="slider round"></span>
-                </label>
-            </td>
-        </tr>
-        <tr>
-            <td data-i18n="show_section_totals">Show section "Totals"</td>
-            <td>
-                <label class="switch">
-                    <input type="checkbox" id="showSectionTotals">
-                    <span class="slider round"></span>
-                </label>
-            </td>
-        </tr>
-        <tr>
-            <td data-i18n="use_control_selector">Use selector (instead of slider)</td>
-            <td>
-                <label class="switch">
-                    <input type="checkbox" id="useControlSelector">
-                    <span class="slider round"></span>
-                </label>
-            </td>
-        </tr>
-    </table>
-</section>
-{% endblock %}
+    <div class="card">
+        <h2 data-i18n="section_visibility">Home page sections</h2>
+        <p class="card-sub">Hide sections you don't use to keep the home page focused.</p>
 
-{% block footer %}
-<table>
-    <tr>
-        <td colspan="2" class="center">
-            <button id="save" class="button" onclick="buttonConfirm(this); saveWebConfig()"
-                data-i18n="button_save">Save</button>
-        </td>
-    </tr>
-</table>
+        <label class="toggle" style="justify-content:space-between;width:100%;padding:.5rem 0;border-bottom:1px solid var(--border-2)">
+            <span data-i18n="show_section_temp">Temperature</span>
+            <span style="display:inline-flex;align-items:center">
+                <input type="checkbox" id="showSectionTemperature">
+                <span class="sw"></span>
+            </span>
+        </label>
+        <label class="toggle" style="justify-content:space-between;width:100%;padding:.5rem 0;border-bottom:1px solid var(--border-2)">
+            <span data-i18n="show_section_display">Display panel</span>
+            <span style="display:inline-flex;align-items:center">
+                <input type="checkbox" id="showSectionDisplay">
+                <span class="sw"></span>
+            </span>
+        </label>
+        <label class="toggle" style="justify-content:space-between;width:100%;padding:.5rem 0;border-bottom:1px solid var(--border-2)">
+            <span data-i18n="show_section_control">Control (sliders)</span>
+            <span style="display:inline-flex;align-items:center">
+                <input type="checkbox" id="showSectionControl">
+                <span class="sw"></span>
+            </span>
+        </label>
+        <label class="toggle" style="justify-content:space-between;width:100%;padding:.5rem 0;border-bottom:1px solid var(--border-2)">
+            <span data-i18n="show_section_buttons">Function toggles</span>
+            <span style="display:inline-flex;align-items:center">
+                <input type="checkbox" id="showSectionButtons">
+                <span class="sw"></span>
+            </span>
+        </label>
+        <label class="toggle" style="justify-content:space-between;width:100%;padding:.5rem 0;border-bottom:1px solid var(--border-2)">
+            <span data-i18n="show_section_timer">Maintenance timers</span>
+            <span style="display:inline-flex;align-items:center">
+                <input type="checkbox" id="showSectionTimer">
+                <span class="sw"></span>
+            </span>
+        </label>
+        <label class="toggle" style="justify-content:space-between;width:100%;padding:.5rem 0">
+            <span data-i18n="show_section_totals">Totals</span>
+            <span style="display:inline-flex;align-items:center">
+                <input type="checkbox" id="showSectionTotals">
+                <span class="sw"></span>
+            </span>
+        </label>
+    </div>
+</section>
+
+<!-- ==================== Input style ==================== -->
+<section>
+    <div class="card">
+        <h2 data-i18n="section_input">Input style</h2>
+        <label class="toggle" style="justify-content:space-between;width:100%">
+            <span data-i18n="use_control_selector">Use number selector (instead of sliders)</span>
+            <span style="display:inline-flex;align-items:center">
+                <input type="checkbox" id="useControlSelector">
+                <span class="sw"></span>
+            </span>
+        </label>
+    </div>
+</section>
+
+<div class="action-bar">
+    <button id="save" class="btn btn-primary"
+            onclick="buttonConfirm(this); saveWebConfig()"
+            data-i18n="button_save">Save</button>
+</div>
 {% endblock %}
 
 {% block embed_scripts %}
@@ -124,24 +128,24 @@
             if (this.readyState == 4 && this.status == 200) {
                 var json = JSON.parse(req.responseText)
                 document.getElementById('showSectionTemperature').checked = json.SST
-                document.getElementById('showSectionDisplay').checked = json.SSD
-                document.getElementById('showSectionControl').checked = json.SSC
-                document.getElementById('showSectionButtons').checked = json.SSB
-                document.getElementById('showSectionTimer').checked = json.SSTIM
-                document.getElementById('showSectionTotals').checked = json.SSTOT
-                document.getElementById('useControlSelector').checked = json.UCS
+                document.getElementById('showSectionDisplay').checked     = json.SSD
+                document.getElementById('showSectionControl').checked     = json.SSC
+                document.getElementById('showSectionButtons').checked     = json.SSB
+                document.getElementById('showSectionTimer').checked       = json.SSTIM
+                document.getElementById('showSectionTotals').checked      = json.SSTOT
+                document.getElementById('useControlSelector').checked     = json.UCS
             }
         }
     }
 
     function saveWebConfig() {
         localStorage.setItem('showSectionTemperature', document.getElementById('showSectionTemperature').checked)
-        localStorage.setItem('showSectionDisplay', document.getElementById('showSectionDisplay').checked)
-        localStorage.setItem('showSectionControl', document.getElementById('showSectionControl').checked)
-        localStorage.setItem('showSectionButtons', document.getElementById('showSectionButtons').checked)
-        localStorage.setItem('showSectionTimer', document.getElementById('showSectionTimer').checked)
-        localStorage.setItem('showSectionTotals', document.getElementById('showSectionTotals').checked)
-        localStorage.setItem('useControlSelector', document.getElementById('useControlSelector').checked)
+        localStorage.setItem('showSectionDisplay',     document.getElementById('showSectionDisplay').checked)
+        localStorage.setItem('showSectionControl',     document.getElementById('showSectionControl').checked)
+        localStorage.setItem('showSectionButtons',     document.getElementById('showSectionButtons').checked)
+        localStorage.setItem('showSectionTimer',       document.getElementById('showSectionTimer').checked)
+        localStorage.setItem('showSectionTotals',      document.getElementById('showSectionTotals').checked)
+        localStorage.setItem('useControlSelector',     document.getElementById('useControlSelector').checked)
         writeWebConfig()
     }
 
@@ -149,13 +153,13 @@
         var req = new XMLHttpRequest()
         req.open('POST', '/setwebconfig/')
         var json = {
-            'SST': document.getElementById('showSectionTemperature').checked,
-            'SSD': document.getElementById('showSectionDisplay').checked,
-            'SSC': document.getElementById('showSectionControl').checked,
-            'SSB': document.getElementById('showSectionButtons').checked,
+            'SST':   document.getElementById('showSectionTemperature').checked,
+            'SSD':   document.getElementById('showSectionDisplay').checked,
+            'SSC':   document.getElementById('showSectionControl').checked,
+            'SSB':   document.getElementById('showSectionButtons').checked,
             'SSTIM': document.getElementById('showSectionTimer').checked,
             'SSTOT': document.getElementById('showSectionTotals').checked,
-            'UCS': document.getElementById('useControlSelector').checked
+            'UCS':   document.getElementById('useControlSelector').checked
         }
         req.send(JSON.stringify(json))
     }

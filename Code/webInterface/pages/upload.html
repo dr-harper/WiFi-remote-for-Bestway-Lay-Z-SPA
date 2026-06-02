@@ -5,22 +5,35 @@
 {% endblock %}
 
 {% block top_navigation %}
-{% run use_component("topNavigation", "upload") %}
+{% run use_component("topNavigation", "settings") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "settings") %}
 {% endblock %}
 
 {% block content %}
 <section>
-	<p data-i18n="upload_instr1">Use this page to upload new files to the ESP8266.</p>
-	<p data-i18n="upload_instr2">You can use compressed (deflated) files (files with a .gz extension) to save
-		space and bandwidth.</p>
+  <div class="card">
+    <h2 data-i18n="section_upload">Upload a file</h2>
+    <p class="card-sub" data-i18n="upload_instr1">
+      Use this page to upload new files to the ESP8266's LittleFS partition.
+    </p>
+    <p class="card-sub" data-i18n="upload_instr2">
+      You can use compressed (.gz) files to save flash space and bandwidth.
+    </p>
+    <form method="post" enctype="multipart/form-data"
+          style="display:flex;flex-direction:column;gap:.75rem;margin-top:1rem">
+      <label class="btn" for="browse_for_file" id="select_image"
+             data-i18n="btn_browse"
+             style="cursor:pointer;justify-content:center">
+        Browse…
+      </label>
+      <input type="file" id="browse_for_file" name="Choose file"
+             style="position:absolute;left:-9999px"
+             accept=".txt,.gz,.html,.ico,.js,.css,.mel,.png,.json">
+      <button type="submit" class="btn btn-primary" data-i18n="btn_upload">Upload</button>
+    </form>
+  </div>
 </section>
-{% endblock %}
-
-{% block footer %}
-<form method="post" enctype="multipart/form-data" style="margin: 0px auto 8px auto">
-	<label class="button" for="browse_for_file" id="select_image" data-i18n="btn_browse">Browse...</label>
-	<input type="file" id="browse_for_file" name="Choose file" style="visibility:hidden;position:absolute"
-		accept=".txt,.gz,.html,.ico,.js,.css,.mel,.png,.json">
-	<button type="submit" class="button" data-i18n="btn_upload">upload</button>
-</form>
 {% endblock %}

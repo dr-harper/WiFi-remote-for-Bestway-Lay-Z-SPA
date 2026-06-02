@@ -1,22 +1,53 @@
 {% extends "../layout.html" %}
 
 {% block header_headline_title %}
-<span data-i18n="menu_home">Home</span>
+<span data-i18n="title_diag_links">Diagnostic links</span>
 {% endblock %}
 
 {% block top_navigation %}
-{% run use_component("topNavigation", "home") %}
+{% run use_component("topNavigation", "settings") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "settings") %}
 {% endblock %}
 
 {% block content %}
 <section>
-  <a href="/resetwifi/">/resetwifi/</a> <span data-i18n="link_resetwifi_note">Be aware!</span><br>
-  <a href="/hwtest/">/hwtest/</a> <span data-i18n="link_hwtest_note">No prior instructions! Use </span><a
-    href="hwtestinfo.html">hwtestinfo.html</a><span data-i18n="link_hwtest_note2"> instead.</span><br>
-  <a href="/inputs/">/inputs/</a> <span data-i18n="link_inputs_note">Edge counting on pins. Debug feat.</span><br>
-  <a href="/restart/">/restart/</a><br>
-  <a href="/info/">/info/</a><br>
-  <a href="/debug-on/">/debug-on/</a><br>
-  <a href="/debug-off/">/debug-off/</a><br>
+  <div class="card">
+    <h2 data-i18n="section_diag_links">Diagnostic + admin endpoints</h2>
+    <p class="card-sub">Direct links to backend routes — use with care.</p>
+    <div class="row">
+      <a href="/resetwifi/" class="mono">/resetwifi/</a>
+      <span class="value" data-i18n="link_resetwifi_note" style="color:var(--bad)">Wipes WiFi creds</span>
+    </div>
+    <div class="row">
+      <a href="/hwtest/" class="mono">/hwtest/</a>
+      <span class="value muted">
+        <span data-i18n="link_hwtest_note">No prior instructions! See </span><a href="hwtestinfo.html">hwtestinfo.html</a>
+        <span data-i18n="link_hwtest_note2"> first.</span>
+      </span>
+    </div>
+    <div class="row">
+      <a href="/inputs/" class="mono">/inputs/</a>
+      <span class="value muted" data-i18n="link_inputs_note">Edge counting on pins. Debug feature.</span>
+    </div>
+    <div class="row">
+      <a href="/restart/" class="mono">/restart/</a>
+      <span class="value muted">Reboot the ESP</span>
+    </div>
+    <div class="row">
+      <a href="/info/" class="mono">/info/</a>
+      <span class="value muted">Heap / FW / WiFi diagnostics</span>
+    </div>
+    <div class="row">
+      <a href="/debug-on/" class="mono">/debug-on/</a>
+      <span class="value muted">Enable debug log</span>
+    </div>
+    <div class="row">
+      <a href="/debug-off/" class="mono">/debug-off/</a>
+      <span class="value muted">Disable debug log</span>
+    </div>
+  </div>
 </section>
 {% endblock %}

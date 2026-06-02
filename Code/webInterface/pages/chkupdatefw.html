@@ -5,15 +5,27 @@
 {% endblock %}
 
 {% block top_navigation %}
-{% run use_component("topNavigation", "chkupdatefw") %}
+{% run use_component("topNavigation", "settings") %}
+{% endblock %}
+
+{% block bottom_navigation %}
+{% run use_component("bottomNavigation", "settings") %}
 {% endblock %}
 
 {% block content %}
 <section>
-  <p data-i18n="chkupdate_message">
-    This functionality has been removed. It was too demanding for the ESP8266, and I couldn't figure out how to make
-    GitHub send small enough packages for it to handle. Unfortunately, it used to work, but I think something has
-    changed on GitHub's side.
-  </p>
+  <div class="card">
+    <h2>Firmware update check</h2>
+    <div class="callout warn">
+      <p data-i18n="chkupdate_message" style="margin:0">
+        This functionality has been removed — it was too memory-hungry for the ESP8266, and GitHub's
+        package sizes outgrew what the device could handle in-place.
+      </p>
+    </div>
+    <p style="margin-top:.75rem">
+      To update firmware, flash via USB (PlatformIO <code>pio run -t upload</code>) or use the
+      <a href="/upload.html">file uploader</a> for an OTA-style filesystem refresh.
+    </p>
+  </div>
 </section>
 {% endblock %}

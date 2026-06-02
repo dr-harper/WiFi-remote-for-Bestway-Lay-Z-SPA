@@ -10,18 +10,18 @@
 
 {% block content %}
 <section>
-	<p data-i18n="success_message">The operation was successful.</p>
+  <div class="card" style="text-align:center;padding:2rem 1rem">
+    <div style="font-size:3rem;color:var(--good);margin-bottom:.5rem">✓</div>
+    <h2 style="margin:0 0 .5rem" data-i18n="success_title">All done</h2>
+    <p data-i18n="success_message">The operation completed successfully.</p>
+  </div>
 </section>
-{% endblock %}
 
-{% block footer %}
-<p class="center">
-	<a class="button" href="/" data-i18n="success_btn_home">Home</a>
-</p>
-<p class="center">
-	<a class="button" href="/upload.html" data-i18n="success_btn_upload">Upload a file</a>
-</p>
-<p class="center">
-	<a class="button" href="/remove.html" data-i18n="success_btn_remove">Remove a file</a>
-</p>
+<section>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:.5rem">
+    <a class="btn btn-primary" href="/" data-i18n="success_btn_home">Home</a>
+    <a class="btn" href="/upload.html" data-i18n="success_btn_upload">Upload a file</a>
+    <a class="btn" href="/remove.html" data-i18n="success_btn_remove">Remove a file</a>
+  </div>
+</section>
 {% endblock %}
